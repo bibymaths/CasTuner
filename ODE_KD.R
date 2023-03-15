@@ -63,7 +63,7 @@ medianexp$time<-as.numeric(medianexp$time)
 
 medianexp$plasmid<-as.factor(medianexp$plasmid)
 medianexp %>% group_by(plasmid) %>% fct_relevel(plasmid, levels=c("SP430", "SP428", "SP430ABA", "SP427", "SP411"))
-medianexp %>% dplyr::filter(time!=125)->medianexp
+
 medianexp %>% dplyr::filter (exp == "KD" )->KD
 KD %>% dplyr::filter(time==0)->KD0
 
