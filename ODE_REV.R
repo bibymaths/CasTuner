@@ -18,7 +18,7 @@ theme_set(theme_classic() +
                   strip.background = element_blank(), legend.title = element_blank()))
 mypal<-mypal<- pal_npg("nrc", alpha = 1)(2)
 
-MyFlowSet <- read.flowSet(path="C:/Users/noviello/Documents/Analysis of FlowCytometry for modelling/Flow cytometry/20210604/Experiment_013/allfiles", min.limit=0.01)
+MyFlowSet <- read.flowSet(path="fcs_files/NFC", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
 p <- autoplot(MyFlowSet[[3]], x = chnl[1], y = chnl[2], bins=100)
@@ -33,7 +33,7 @@ medianexp<- as.data.frame(fsApply(Singlets_MyFlowSet, each_col, median))
 mBFP_neg<-mean(medianexp[c(1:3), 7])
 mmCherry_neg<-mean(medianexp[c(1:3), 8])
 
-MyFlowSet <- read.flowSet(path="C:/Users/noviello/Documents/Analysis of FlowCytometry for modelling/Flow cytometry/20210813_timecourse/Experiment_013", min.limit=0.01)
+MyFlowSet <- read.flowSet(path="fcs_files/time-course_data", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
 p <- autoplot(MyFlowSet[[3]], x = chnl[1], y = chnl[2], bins=100)
@@ -71,8 +71,7 @@ REV150 %>% filter(plasmid=="SP411") %>% summarize( mmcherry=mean(`PE-A`))->t0rev
 merge(x=REV,y=t0rev,  all.x=T)->REV
 merge(x=REV,y=t0rev2,  all.x=T)->REV
 REV %>% mutate(fc.cherry=`PE-A`/mmcherry, fc.bfp=`BV421-A`/mbfp)->REV
-REV %>% dplyr::filter(time!=125)->REV
-REV %>% dplyr::filter(time!=75)->REV
+
 REV %>% group_by(plasmid) %>% filter(time>10) %>% 
   summarize(mean.final=mean((`BV421-A`)))->mean.final
 REV<-merge(REV, mean.final, all.x = T)
@@ -198,7 +197,7 @@ p<-ggplot(REVSP430,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP430_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_dCas9_Hill.pdf", fix, device=cairo_pdf)
 
 p<-ggplot(REVSP430,aes(time,norm.bfp))+
   geom_point(size=.6, alpha=0.4, color="#4DBBD5FF") +
@@ -208,7 +207,7 @@ p<-ggplot(REVSP430,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP430_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, device=cairo_pdf)
 
 
 
@@ -248,7 +247,7 @@ p<-ggplot(REVSP430ABA,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430ABA), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP430ABA_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_KRAB-Split-dCas9_Hill.pdf", fix, device=cairo_pdf)
 
 p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   geom_point(size=.6, alpha=0.4, color="#4DBBD5FF") +
@@ -258,7 +257,7 @@ p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430ABA), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP430ABA_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_KRAB-Split-dCas9_Hill.pdf", fix, device=cairo_pdf)
 
 
 REV %>% filter(plasmid=="SP428")->REVSP428
@@ -295,7 +294,7 @@ p<-ggplot(REVSP428,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out428), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP428_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_KRAB-dCas9_Hill.pdf", fix, device=cairo_pdf)
 
 p<-ggplot(REVSP428,aes(time,norm.bfp))+
   geom_point(size=.6, alpha=0.4, color="#4DBBD5FF") +
@@ -305,7 +304,7 @@ p<-ggplot(REVSP428,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out428), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP428_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, device=cairo_pdf)
 
 REV %>% filter(plasmid=="SP427")->REVSP427
 
@@ -341,7 +340,7 @@ p<-ggplot(REVSP427,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out427), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP427_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_HDAC4-dCas9_Hill.pdf", fix, device=cairo_pdf)
 
 p<-ggplot(REVSP427,aes(time,norm.bfp))+
   geom_point(size=.6, alpha=0.4, color="#4DBBD5FF") +
@@ -351,37 +350,13 @@ p<-ggplot(REVSP427,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out427), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP427_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_HDAC4-dCas9_Hill.pdf", fix, device=cairo_pdf)
 
-
-p<-ggplot()+
-  geom_line(data=data.frame(out430), aes(time, R, col="dCas9"))+
-  geom_line(data=data.frame(out427), aes(time, R, col="hHDAC4-dCas9" ))+
-  geom_line(data=data.frame(out428), aes(time, R, col="KRAB-dCas9"))+
-  geom_line(data=data.frame(out430ABA), aes(time, R, col="KRAB-Split-dCas9" ))+
-  geom_line(data=data.frame(out411), aes(time, R, col="CasRx" ))+
-  coord_cartesian(x=c(0,150))+
-  labs(x= "Time (hours)" , y = "Normalized repressor level", color = "Legend")+
-  scale_color_manual(values = colors, labels=c("dCas9", "hHDAC4-dCas9", "KRAB-dCas9","KRAB-Split-dCas9","CasRx"))
-fix <- set_panel_size(p, width = unit(2.5*1.618, "cm"), height = unit(2.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/Repressor_all.pdf", fix, device=cairo_pdf)
-p<-ggplot()+
-  geom_line(data=data.frame(out430), aes(time, R, col="dCas9"))+
-  geom_line(data=data.frame(out427), aes(time, R, col="hHDAC4-dCas9" ))+
-  geom_line(data=data.frame(out428), aes(time, R, col="KRAB-dCas9"))+
-  geom_line(data=data.frame(out430ABA), aes(time, R, col="KRAB-Split-dCas9" ))+
-  geom_line(data=data.frame(out411), aes(time, R, col="CasRx" ))+
-  coord_cartesian(x=c(0,50))+
-  labs(x= "Time (hours)" , y = "Normalized repressor level", color = "Legend")+
-  scale_color_manual(values = colors, labels=c("dCas9", "hHDAC4-dCas9", "KRAB-dCas9","KRAB-Split-dCas9","CasRx"))
-
-fix <- set_panel_size(p, width = unit(2.5*1.618, "cm"), height = unit(2.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/Repressor_all_zoom.pdf", fix, device=cairo_pdf)
 
 
 #This model does not work: there is also a delay in the release of the repression
 #we need to try another model
-#the solution we thought about is to manually add a delay to
+#We Manually add a delay to
 #the function of the reporter upregulation and find at which delay
 #the model best fits the data
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
@@ -423,15 +398,12 @@ del.430ABA %>% mutate(res=m.fc-Y)->del.430ABA
 #finding the parameter that minimize the standard error of the estimate
 # https://onlinestatbook.com/2/regression/accuracy.html
 del.430ABA %>% group_by(t) %>% 
-  summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1), RMSE=sqrt(sum(res**2, na.rm=T)/(N-1)))->sum.res.430ABA
-
-
+  summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1)))->sum.res.430ABA
 
 
 min(sum.res.430ABA$MAE)
 sum.res.430ABA$t[sum.res.430ABA$MAE==min(sum.res.430ABA$MAE)]
-sum.res.430ABA$RMSE[sum.res.430ABA$MAE==min(sum.res.430ABA$MAE)]
-sum.res.430ABA$t[sum.res.430ABA$RMSE==min(sum.res.430ABA$RMSE)]
+
 
 p<-ggplot(data=sum.res.430ABA, aes(x=t, y=MAE))+
   geom_point(size=.1, alpha=0.4, color="black") +
@@ -443,19 +415,7 @@ p<-ggplot(data=sum.res.430ABA, aes(x=t, y=MAE))+
   geom_line(data=sum.res.430ABA, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_MAE_REV_SP430ABA_mcherry.pdf", fix, device=cairo_pdf)
-p<-ggplot(data=sum.res.430ABA, aes(x=t, y=RMSE))+
-  geom_point(size=.1, alpha=0.4, color="black") +
-  geom_point(data=sum.res.430ABA, aes(x=sum.res.430ABA$t[sum.res.430ABA$RMSE==min(sum.res.430ABA$RMSE)], y=min(RMSE)), size=.8, alpha=1, color=mypalout[1]) +
-  coord_cartesian(x=c(0,25),y=c(0,0.3))+
-  labs(y= "RMSE" , x = "Delay (hours)")+
-  scale_color_npg()+
-  scale_fill_npg()+
-  geom_line(data=sum.res.430ABA, aes(y=min(RMSE)), lty=2)
-
-fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_RMSE_REV_SP430ABA_mcherry.pdf", fix, device=cairo_pdf)
-
+ggsave("MAE_REV_KRAB-Split-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 
 
 
@@ -503,11 +463,10 @@ REVSP428[, c(4,9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP
 del.428<-merge(del.428, REVSP428.m, all.x = T)
 del.428 %>% mutate(res=m.fc-Y)->del.428
 del.428 %>% group_by(t) %>% 
-  summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1), RMSE=sqrt(sum(res**2, na.rm=T)/(N-1)))->sum.res.428
+  summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1)))->sum.res.428
 min(sum.res.428$MAE)
 sum.res.428$t[sum.res.428$MAE==min(sum.res.428$MAE)]
-sum.res.428$RMSE[sum.res.428$MAE==min(sum.res.428$MAE)]
-sum.res.428$t[sum.res.428$RMSE==min(sum.res.428$RMSE)]
+
 
 p<-ggplot(data=sum.res.428, aes(x=t, y=MAE))+
   geom_point(size=.1, alpha=0.4, color="black") +
@@ -519,18 +478,7 @@ p<-ggplot(data=sum.res.428, aes(x=t, y=MAE))+
   geom_line(data=sum.res.428, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_MAE_REV_SP428_mcherry.pdf", fix, device=cairo_pdf)
-p<-ggplot(data=sum.res.428, aes(x=t, y=RMSE))+
-  geom_point(size=.1, alpha=0.4, color="black") +
-  geom_point(data=sum.res.428, aes(x=sum.res.428$t[sum.res.428$RMSE==min(sum.res.428$RMSE)], y=min(RMSE)), size=.8, alpha=1, color=mypalout[1]) +
-  coord_cartesian(x=c(0,25),y=c(0,0.3))+
-  labs(y= "RMSE" , x = "Delay (hours)")+
-  scale_color_npg()+
-  scale_fill_npg()+
-  geom_line(data=sum.res.428, aes(y=min(RMSE)), lty=2)
-
-fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_RMSE_REV_SP428_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_REV_KRAB-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 
 
 
@@ -559,11 +507,11 @@ delays427 %>%
 del.427<-merge(del.427, REVSP427.m, all.x = T)
 del.427 %>% mutate(res=m.fc-Y)->del.427
 del.427 %>% group_by(t) %>% 
-  summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1), RMSE=sqrt(sum(res**2, na.rm=T)/(N-1)))->sum.res.427
+  summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1)))->sum.res.427
 min(sum.res.427$MAE)
 sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)]
-sum.res.427$RMSE[sum.res.427$MAE==min(sum.res.427$MAE)]
-sum.res.427$t[sum.res.427$RMSE==min(sum.res.427$RMSE)]
+
+
 
 
 
@@ -577,18 +525,7 @@ p<-ggplot(data=sum.res.427, aes(x=t, y=MAE))+
   geom_line(data=sum.res.427, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_MAE_REV_SP427_mcherry.pdf", fix, device=cairo_pdf)
-p<-ggplot(data=sum.res.427, aes(x=t, y=RMSE))+
-  geom_point(size=.1, alpha=0.4, color="black") +
-  geom_point(data=sum.res.427, aes(x=sum.res.427$t[sum.res.427$RMSE==min(sum.res.427$RMSE)], y=min(RMSE)), size=.8, alpha=1, color=mypalout[1]) +
-  coord_cartesian(x=c(0,25),y=c(0,0.3))+
-  labs(y= "RMSE" , x = "Delay (hours)")+
-  scale_color_npg()+
-  scale_fill_npg()+
-  geom_line(data=sum.res.427, aes(y=min(RMSE)), lty=2)
-
-fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_RMSE_REV_SP427_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_REV_HDAC4-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 
 
 
@@ -617,11 +554,10 @@ delays430 %>%
 del.430<-merge(del.430, REVSP430.m, all.x = T)
 del.430 %>% mutate(res=m.fc-Y)->del.430
 del.430 %>% group_by(t) %>% 
-  summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1), RMSE=sqrt(sum(res**2, na.rm=T)/(N-1)))->sum.res.430
+  summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1)))->sum.res.430
 min(sum.res.430$MAE)
 sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)]
-sum.res.430$RMSE[sum.res.430$MAE==min(sum.res.430$MAE)]
-sum.res.430$t[sum.res.430$RMSE==min(sum.res.430$RMSE)]
+
 
 p<-ggplot(data=sum.res.430, aes(x=t, y=MAE))+
   geom_point(size=.1, alpha=0.4, color="black") +
@@ -633,23 +569,16 @@ p<-ggplot(data=sum.res.430, aes(x=t, y=MAE))+
   geom_line(data=sum.res.430, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_MAE_REV_SP430_mcherry.pdf", fix, device=cairo_pdf)
-p<-ggplot(data=sum.res.430, aes(x=t, y=RMSE))+
-  geom_point(size=.1, alpha=0.4, color="black") +
-  geom_point(data=sum.res.430, aes(x=sum.res.430$t[sum.res.430$RMSE==min(sum.res.430$RMSE)], y=min(RMSE)), size=.8, alpha=1, color=mypalout[1]) +
-  coord_cartesian(x=c(0,25),y=c(0,0.3))+
-  labs(y= "RMSE" , x = "Delay (hours)")+
-  scale_color_npg()+
-  scale_fill_npg()+
-  geom_line(data=sum.res.430, aes(y=min(RMSE)), lty=2)
+ggsave("MAE_REV_dCas9_mcherry.pdf", fix, device=cairo_pdf)
 
-fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_RMSE_REV_SP430_mcherry.pdf", fix, device=cairo_pdf)
-
-
+#the delays are
+#for dcas9
 sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)]
+#for krab-dcas9
 sum.res.428$t[sum.res.428$MAE==min(sum.res.428$MAE)]
+#for krab-split-dcas9
 sum.res.430ABA$t[sum.res.430ABA$MAE==min(sum.res.430ABA$MAE)]
+#for hdac4-dcas9
 sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)]
 
 
@@ -734,7 +663,7 @@ p<-ggplot(REVSP427,aes(time,fc.cherry))+
   geom_line(data=data.frame(out427d), aes(time, Y),lty=2)+
   geom_line(data=data.frame(out427), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP427_6h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_HDAC4-dCas9_6h_delay.pdf", fix, device=cairo_pdf)
 
 
 p<-ggplot(REVSP428,aes(time,fc.cherry))+
@@ -746,7 +675,7 @@ p<-ggplot(REVSP428,aes(time,fc.cherry))+
   geom_line(data=data.frame(out428d), aes(time, Y),lty=2)+
   geom_line(data=data.frame(out428), aes(time, Y), lty=1)
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP428_18.5h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_KRAB-dCas9_18.5h_delay.pdf", fix, device=cairo_pdf)
 
 
 
@@ -760,7 +689,7 @@ p<-ggplot(REVSP430ABA,aes(time,fc.cherry))+
   geom_line(data=data.frame(out430ABA), aes(time, Y))
   
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP430ABA_16.5h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_KRAB-Split-dCas9_16.5h_delay.pdf", fix, device=cairo_pdf)
 
 p<-ggplot(REVSP430,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +
@@ -771,7 +700,7 @@ p<-ggplot(REVSP430,aes(time,fc.cherry))+
   geom_line(data=data.frame(out430), aes(time, Y))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP430_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_dCas9_delay.pdf", fix, device=cairo_pdf)
 
 p<-ggplot(REVSP411,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +
@@ -782,7 +711,7 @@ p<-ggplot(REVSP411,aes(time,fc.cherry))+
   geom_line(data=data.frame(out411), aes(time, Y))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_mCherry_SP411_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_CasRx_delay.pdf", fix, device=cairo_pdf)
 
 
 
@@ -797,7 +726,7 @@ p<-ggplot(REVSP427,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out427), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP427_6h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_HDAC4-dCas9_6h_delay.pdf", fix, device=cairo_pdf)
 
 
 p<-ggplot(REVSP428,aes(time,norm.bfp))+
@@ -808,7 +737,7 @@ p<-ggplot(REVSP428,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out428), aes(time, R), lty=1)
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP428_18.5h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_KRAB-dCas9_18.5h_delay.pdf", fix, device=cairo_pdf)
 
 
 
@@ -821,7 +750,7 @@ p<-ggplot(REVSP430ABA,aes(time,norm.BFP))+
   geom_line(data=data.frame(out430ABA), aes(time, R))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP430ABA_16.5h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_KRAB-Split-dCas9_16.5h_delay.pdf", fix, device=cairo_pdf)
 
 p<-ggplot(REVSP430,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +
@@ -832,7 +761,7 @@ p<-ggplot(REVSP430,aes(time,norm.bfp))+
   geom_line(data=data.frame(out430), aes(time, R))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP430_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_dCas9_delay.pdf", fix, device=cairo_pdf)
 
 p<-ggplot(REVSP411,aes(time, norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +
@@ -843,10 +772,10 @@ p<-ggplot(REVSP411,aes(time, norm.bfp))+
   geom_line(data=data.frame(out411), aes(time, R))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/ODE/REV ODE/NEW_REV_tagBFP_SP411_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_CasRx_delay.pdf", fix, device=cairo_pdf)
 
 
-mypal
+
 
 
 
