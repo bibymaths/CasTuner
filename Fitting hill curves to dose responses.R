@@ -12,7 +12,7 @@ library(ggcyto)
 library(extrafont)
 library(tidyverse)
 #non fluorescent control for background subtraction
-fMyFlowSet <- read.flowSet(path="C:/Users/noviello/Documents/Analysis of FlowCytometry for modelling/Flow cytometry/20210615/Experiment_013/20210615_KD_4d", min.limit=0.01)
+fMyFlowSet <- read.flowSet(path="GemmaEvaLuna/CasTuner/fcs_files/NFC", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(fMyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
 p <- autoplot(fMyFlowSet[[3]], x = chnl[1], y = chnl[2], bins=100)
