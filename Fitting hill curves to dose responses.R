@@ -12,7 +12,7 @@ library(ggcyto)
 library(extrafont)
 library(tidyverse)
 #non fluorescent control for background subtraction
-fMyFlowSet <- read.flowSet(path="GemmaEvaLuna/CasTuner/fcs_files/NFC", min.limit=0.01)
+fMyFlowSet <- read.flowSet(path="fcs_files/NFC", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(fMyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
 p <- autoplot(fMyFlowSet[[3]], x = chnl[1], y = chnl[2], bins=100)
@@ -40,7 +40,7 @@ theme_set(theme_classic() +
                   axis.title = element_text(size = 6, family = "Arial"), strip.text = element_text(size = 6, family = "Arial", color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 
-MyFlowSet1 <- read.flowSet(path="GemmaEvaLuna/CasTuner/fcs_files/dose_response_data", min.limit=0.01)
+MyFlowSet1 <- read.flowSet(path="fcs_files/dose_response_data", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet1[[2]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
 p <- autoplot(MyFlowSet1[[2]], x = chnl[1], y = chnl[2], bins=100)
