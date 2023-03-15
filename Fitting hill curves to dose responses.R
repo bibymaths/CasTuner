@@ -221,7 +221,7 @@ p<-ggplot(SP430A,aes(norm.bfp, fc))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("Hill-KRAB-Split-dCas9.pdf", fix, device=cairo_pdf)
 
-
+#summary of fittings
 summarysp411
 summarysp427
 summarysp428
