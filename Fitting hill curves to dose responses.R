@@ -40,7 +40,7 @@ theme_set(theme_classic() +
                   axis.title = element_text(size = 6, family = "Arial"), strip.text = element_text(size = 6, family = "Arial", color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 
-MyFlowSet1 <- read.flowSet(path="C:/Users/noviello/Documents/Paper 2021/Figure 4/day4titrationdata", min.limit=0.01)
+MyFlowSet1 <- read.flowSet(path="GemmaEvaLuna/CasTuner/fcs_files/dose_response_data", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet1[[2]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
 p <- autoplot(MyFlowSet1[[2]], x = chnl[1], y = chnl[2], bins=100)
@@ -129,7 +129,7 @@ p <-ggplot(SP430,aes(norm.bfp, fc))+
   coord_cartesian(y=c(0,1))+
   labs(x= "Normalized repressor level" , y = "Normalized reporter level")
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/Hill curves/Hill_SP430.pdf", fix, device=cairo_pdf)
+ggsave("Hill_dCas9.pdf", fix, device=cairo_pdf)
 
 
 d4g %>% dplyr::filter(plasmid=="411")->SP411
@@ -151,7 +151,7 @@ p<-ggplot(SP411,aes(norm.bfp, fc))+
   coord_cartesian(y=c(0,1))+
   labs(x= "Normalized repressor level" , y = "Normalized reporter level")
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/Hill curves/Hill_SP411_new.pdf", fix, device=cairo_pdf)
+ggsave("Hill_CasRx.pdf", fix, device=cairo_pdf)
 
 
 
@@ -176,7 +176,7 @@ p<-ggplot(SP427,aes(norm.bfp, fc))+
   coord_cartesian(y=c(0,1))+
   labs(x= "Normalized repressor level" , y = "Normalized reporter level")
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/Hill curves/Hill_SP427.pdf", fix, device=cairo_pdf)
+ggsave("Hill-HDAC4-dCas9.pdf", fix, device=cairo_pdf)
 
 
 d4g %>% dplyr::filter(plasmid=="428")->SP428
@@ -198,7 +198,7 @@ p<-ggplot(SP428,aes(norm.bfp, fc))+
   coord_cartesian(y=c(0,1))+
   labs(x= "Normalized repressor level" , y = "Normalized reporter level")
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/Hill curves/Hill_SP428.pdf", fix, device=cairo_pdf)
+ggsave("Hill-KRAB-dCas9.pdf", fix, device=cairo_pdf)
 
 d4g %>% dplyr::filter(plasmid=="430ABA")->SP430A
 R=SP430A$norm.bfp
@@ -219,7 +219,7 @@ p<-ggplot(SP430A,aes(norm.bfp, fc))+
   coord_cartesian(y=c(0,1))+
   labs(x= "Normalized repressor level" , y = "Normalized reporter level")
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("C:/Users/noviello/Documents/Paper 2021/Figure 4/Hill curves/Hill_SP430A.pdf", fix, device=cairo_pdf)
+ggsave("Hill-KRAB-Split-dCas9.pdf", fix, device=cairo_pdf)
 
 
 summarysp411
