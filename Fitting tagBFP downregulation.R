@@ -1,3 +1,4 @@
+#load required packages
 library(flowCore)
 library(ggcyto)
 library(openCyto)
@@ -9,6 +10,7 @@ library(gridExtra)
 library(egg)
 library(ggridges)
 library(ggsci)
+#set theme for plotting
 theme_set(theme_classic() +
             theme(legend.text = element_text(size = 6, family = "Arial"), panel.border = element_rect(color = "black", fill = NA, size = 0.5),
                   axis.line = element_blank(), axis.text = element_text(size = 6, family = "Arial", color= "black"),
@@ -17,9 +19,11 @@ theme_set(theme_classic() +
                   axis.title = element_text(size = 6, family = "Arial"), strip.text = element_text(size = 6, family = "Arial", color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 mypal<-mypal<- pal_npg("nrc", alpha = 1)(2)
-#non-fluorescent control for background extraction
+
+#load non-fluorescent control for background extraction
 
 MyFlowSet <- read.flowSet(path="fcs_files/NFC", min.limit=0.01)
+#gating
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
 p <- autoplot(MyFlowSet[[3]], x = chnl[1], y = chnl[2], bins=100)
@@ -30,10 +34,13 @@ sing_g <- openCyto:::.singletGate(BoundaryFrame, channels = chnl)
 p <- autoplot(BoundaryFrame, x = chnl[1], y = chnl[2])
 p + geom_gate(sing_g)
 Singlets_MyFlowSet<-Subset(MyFlowSet, bou_g%&% sing_g)
+#calculate median
 medianexp<- as.data.frame(fsApply(Singlets_MyFlowSet, each_col, median))
+#median bfp and and mcherry (mean of medians)
 mBFP_neg<-mean(medianexp[c(1:3), 7])
 mmCherry_neg<-mean(medianexp[c(1:3), 8])
 
+#load time-course data for fitting
 MyFlowSet <- read.flowSet(path="fcs_files/time-course_data", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
@@ -45,32 +52,31 @@ sing_g <- openCyto:::.singletGate(BoundaryFrame, channels = chnl)
 p <- autoplot(BoundaryFrame, x = chnl[1], y = chnl[2])
 p + geom_gate(sing_g)
 Singlets_MyFlowSet<-Subset(MyFlowSet, bou_g%&% sing_g)
-# extract normalized median expression----
-
+# extract normalized median expression
+#1 subtract bfp and mcherry of negative control
 Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -mBFP_neg)
 Norm_Singlets_MyFlowSet<- transform(Singlets_MyFlowSet, transformList('BV421-A' ,Transf))
 Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -mmCherry_neg)
 Norm_Singlets_MyFlowSet<- transform(Norm_Singlets_MyFlowSet, transformList('PE-A' ,Transf))
+#take median and extract
 medianexp<- as.data.frame(fsApply(Norm_Singlets_MyFlowSet, each_col, median))
 medianexp<-medianexp[, c(7:8)]
 
 
 medianexp %>% rownames_to_column()->medianexp
 medianexp %>% separate(1, c( NA, NA, "plasmid", "exp", "rep", "time", NA, NA), sep = "_") ->medianexp
-medianexp
-
-
 medianexp$time<-as.numeric(medianexp$time)
 
 medianexp$plasmid<-as.factor(medianexp$plasmid)
 medianexp %>% group_by(plasmid) %>% fct_relevel(plasmid, levels=c("SP430", "SP428", "SP430ABA", "SP427", "SP411"))
+#sample "SP430" is dCas9, "SP428" is KRAB-dCas9, "SP430ABA" is Split-KRAB-dCas9, "SP411" is CasRx.
+
+#the samples that we need are those with exp=="Rev"
 medianexp %>% dplyr::filter(exp=="Rev")->REV
-REV %>% dplyr::filter(time==0)->REV0
-REV0 %>% group_by(plasmid) %>% summarize( mbfp=mean(`BV421-A`))->t0rev
-merge(x=REV,y=t0rev,  all.x=T)->REV
-REV %>% mutate(fc.bfp=`BV421-A`/mbfp)->REV
-REV %>% dplyr::filter(time!=125)->REV
-REV %>% dplyr::filter(time!=75)->REV
+
+#Do min-max scaling of BFP level, with max as the mean for time-points after 10h and min as bfp mean at time 0
+
+
 REV %>% group_by(plasmid) %>% filter(time>10) %>% 
   summarize(mean.final=mean((`BV421-A`)))->mean.final
 REV<-merge(REV, mean.final, all.x = T)
@@ -80,7 +86,7 @@ REV<-merge(REV, mean.init, all.x = T)
 REV %>% group_by(plasmid) %>% 
   mutate(norm.bfp=(`BV421-A`-mean.final)/(mean.init-mean.final))->REV
 
-
+#fit for KRAB-split-dCas9 for normalized (min-max scaled) data
 
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
 yf=0
@@ -108,6 +114,7 @@ p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("REV_SP430ABA_fitting.pdf", fix, device=cairo_pdf)
 
+#fit for dCas9 for normalized (min-max scaled) data
 
 REV %>% filter(plasmid=="SP430")->REVSP430
 yf=0
@@ -135,6 +142,7 @@ p<-ggplot(REVSP430,aes(time,norm.bfp))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("REV_dCas9_fitting.pdf", fix, device=cairo_pdf)
 
+#fit for KRAB-dCas9 for normalized (min-max scaled) data
 
 REV %>% filter(plasmid=="SP428")->REVSP428
 yf=0
@@ -162,6 +170,7 @@ p<-ggplot(REVSP428,aes(time,norm.bfp))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("REV_KRAB-dCas9_fitting.pdf", fix, device=cairo_pdf)
 
+#fit for HDAC4-dCas9 for normalized (min-max scaled) data
 
 REV %>% filter(plasmid=="SP427")->REVSP427
 yf=0
@@ -189,6 +198,7 @@ p<-ggplot(REVSP427,aes(time,norm.bfp))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("REV_HDAC4-dCas9_fitting.pdf", fix, device=cairo_pdf)
 
+#fit for CasRx for normalized (min-max scaled) data
 
 REV %>% filter(plasmid=="SP411")->REVSP411
 yf=0
