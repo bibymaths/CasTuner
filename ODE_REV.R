@@ -1,3 +1,4 @@
+#load required libraries
 library(flowCore)
 library(ggcyto)
 library(openCyto)
@@ -9,6 +10,7 @@ library(gridExtra)
 library(egg)
 library(ggridges)
 library(ggsci)
+#set theme
 theme_set(theme_classic() +
             theme(legend.text = element_text(size = 6, family = "Arial"), panel.border = element_rect(color = "black", fill = NA, size = 0.5),
                   axis.line = element_blank(), axis.text = element_text(size = 6, family = "Arial", color= "black"),
@@ -16,8 +18,7 @@ theme_set(theme_classic() +
                   axis.text.y = element_text(vjust = 0.5, color= "black"),
                   axis.title = element_text(size = 6, family = "Arial"), strip.text = element_text(size = 6, family = "Arial", color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
-mypal<-mypal<- pal_npg("nrc", alpha = 1)(2)
-
+#load non-fluorescent control for background fluorescence subtraction
 MyFlowSet <- read.flowSet(path="fcs_files/NFC", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
@@ -32,7 +33,7 @@ Singlets_MyFlowSet<-Subset(MyFlowSet, bou_g%&% sing_g)
 medianexp<- as.data.frame(fsApply(Singlets_MyFlowSet, each_col, median))
 mBFP_neg<-mean(medianexp[c(1:3), 7])
 mmCherry_neg<-mean(medianexp[c(1:3), 8])
-
+#load time-course data, remove background fluorescence, take median
 MyFlowSet <- read.flowSet(path="fcs_files/time-course_data", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
@@ -44,7 +45,6 @@ sing_g <- openCyto:::.singletGate(BoundaryFrame, channels = chnl)
 p <- autoplot(BoundaryFrame, x = chnl[1], y = chnl[2])
 p + geom_gate(sing_g)
 Singlets_MyFlowSet<-Subset(MyFlowSet, bou_g%&% sing_g)
-# extract normalized median expression----
 
 Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -mBFP_neg)
 Norm_Singlets_MyFlowSet<- transform(Singlets_MyFlowSet, transformList('BV421-A' ,Transf))
@@ -52,26 +52,19 @@ Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -m
 Norm_Singlets_MyFlowSet<- transform(Norm_Singlets_MyFlowSet, transformList('PE-A' ,Transf))
 medianexp<- as.data.frame(fsApply(Norm_Singlets_MyFlowSet, each_col, median))
 medianexp<-medianexp[, c(7:8)]
-
-
 medianexp %>% rownames_to_column()->medianexp
 medianexp %>% separate(1, c( NA, NA, "plasmid", "exp", "rep", "time", NA, NA), sep = "_") ->medianexp
-medianexp
-
-
 medianexp$time<-as.numeric(medianexp$time)
-
 medianexp$plasmid<-as.factor(medianexp$plasmid)
 medianexp %>% group_by(plasmid) %>% fct_relevel(plasmid, levels=c("SP430", "SP428", "SP430ABA", "SP427", "SP411"))
+
+#calculate maximal mCherry (which is mCherry in CasRx experiment at last time point -150h-) for fold change calculation
 medianexp %>% dplyr::filter(exp=="Rev")->REV
-REV %>% dplyr::filter(time==0)->REV0
-REV0 %>% group_by(plasmid) %>% summarize( mbfp=mean(`BV421-A`))->t0rev
 REV %>% dplyr::filter(time==150)->REV150
 REV150 %>% filter(plasmid=="SP411") %>% summarize( mmcherry=mean(`PE-A`))->t0rev2
-merge(x=REV,y=t0rev,  all.x=T)->REV
 merge(x=REV,y=t0rev2,  all.x=T)->REV
-REV %>% mutate(fc.cherry=`PE-A`/mmcherry, fc.bfp=`BV421-A`/mbfp)->REV
-
+REV %>% mutate(fc.cherry=`PE-A`/mmcherry)->REV
+#mean-max scaling of bfp between time 0 and average at time >10h.
 REV %>% group_by(plasmid) %>% filter(time>10) %>% 
   summarize(mean.final=mean((`BV421-A`)))->mean.final
 REV<-merge(REV, mean.final, all.x = T)
@@ -83,10 +76,9 @@ REV %>% group_by(plasmid) %>%
 
 #For this model we assume that for CasRx the repressor goes to 0 very rapidly (indeed the t1.2 is  <0.3h)
 #in the case of CasRx, the reporter restores its original level (there is no permanent repression)
-#for the repressor to go to 0, t1.2 needs to be much smaller than the production rate of the repressor beta
-#the production rate of the reporter is "B" and is = log(2)/alpha
+#we use CasRx derepression experiment to calculate mCherry half-life
 
-#estimate mCherry halflife
+#2 methods work the same
 #method 1
 yf=1
 y0=mean(REVSP411$fc.cherry[REVSP411$time==0])
@@ -100,7 +92,6 @@ summary(fit)
 mcherry.halflife<-fit
 
 alphamcherry<-log(2)/coef(fit)[1]
-
  
 # 0.0360691
 #method 2
@@ -108,9 +99,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(a)),
          start = list(a = 0.1))
 coef(fit)[1]
 summary(fit)
-#same result: std.error 0.003
-
-
+#same result: std.error 0.003 is very small
 
 #Therefore, reporter upregulation in the case of CasRx can equivalently be written as
 library(ggsci)
@@ -119,32 +108,7 @@ Y411<-Y
 YF411<-1
 Reporter_411<-stat_function(fun=function(time){YF411+((Y411-YF411)*exp(-time*0.04))}, color=mypalout[5])
 
-
-#for the other repressor systems, 
-#the reporter does not go to the original level
-#BUT IT ALMOST DOES
-
-
-
-#for my other repressors the first thing I do is to check whether 
-#there is a rescue of the expression of the reporter and whether this rescue is complete.
-
-#So now what I first do is to compare the mCherry level of dCas9 
-#and CasRx at 150h time-point.
-REV %>% filter(plasmid=="SP430")->REVSP430
-t.test(REVSP430$fc.cherry[REVSP430$time==150],REVSP411$fc.cherry[REVSP411$time==150])
-REV %>% filter(plasmid=="SP428")->REVSP428
-t.test(REVSP428$fc.cherry[REVSP428$time==150],REVSP411$fc.cherry[REVSP411$time==150])
-REV %>% filter(plasmid=="SP428")->REVSP428
-t.test(REVSP428$fc.cherry[REVSP428$time==100],REVSP411$fc.cherry[REVSP411$time==100])
-REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
-t.test(REVSP430ABA$fc.cherry[REVSP430ABA$time==150],REVSP411$fc.cherry[REVSP411$time==150])
-REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
-t.test(REVSP430ABA$fc.cherry[REVSP430ABA$time==100],REVSP411$fc.cherry[REVSP411$time==100])
-
-REV %>% filter(plasmid=="SP427")->REVSP427
-t.test(REVSP427$fc.cherry[REVSP427$time==150],REVSP411$fc.cherry[REVSP411$time==150])
-t.test(REVSP427$fc.cherry[REVSP427$time==100],REVSP411$fc.cherry[REVSP411$time==100])
+#Now we simulate the ODE model for CasRx
 
 REV %>% filter(plasmid=="SP411")->REVSP411
 mean(REVSP411$norm.bfp[REVSP411$time==0])->R
@@ -168,7 +132,7 @@ time <- seq(0, 150, by = 0.01)
 out411 <- ode(y=state,times=time, func=ode1, parms=parameters)
 out411[,3]*(0.04)->out411[,3]
 
-
+#Now we simulate the model for dCas9
 mean(REVSP430$norm.bfp[REVSP430$time==0])->R
 mean(REVSP430$fc.cherry[REVSP430$time==0])->Y
 
@@ -210,7 +174,7 @@ fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm")
 ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, device=cairo_pdf)
 
 
-
+#Now we simulate the model for KRAB-Split-dCas9
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
 
 
@@ -259,7 +223,7 @@ p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("REV_tagBFP_KRAB-Split-dCas9_Hill.pdf", fix, device=cairo_pdf)
 
-
+#Now we simulate the model for KRAB-dCas9
 REV %>% filter(plasmid=="SP428")->REVSP428
 
 
@@ -306,6 +270,7 @@ p<-ggplot(REVSP428,aes(time,norm.bfp))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, device=cairo_pdf)
 
+#Now we simulate the model for HDAC4-dCas9
 REV %>% filter(plasmid=="SP427")->REVSP427
 
 
@@ -352,13 +317,9 @@ p<-ggplot(REVSP427,aes(time,norm.bfp))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("REV_tagBFP_HDAC4-dCas9_Hill.pdf", fix, device=cairo_pdf)
 
+#Simulate the models again but adding delays to find which model (and therefore delay) fits best
 
-
-#This model does not work: there is also a delay in the release of the repression
-#we need to try another model
-#We Manually add a delay to
-#the function of the reporter upregulation and find at which delay
-#the model best fits the data
+#for Krab-Split-dCas9:
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
 
 
@@ -395,11 +356,10 @@ delays430ABA %>%
 REVSP430ABA[, c(4,9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP430ABA.m
 del.430ABA<-merge(del.430ABA, REVSP430ABA.m, all.x = T)
 del.430ABA %>% mutate(res=m.fc-Y)->del.430ABA
-#finding the parameter that minimize the standard error of the estimate
-# https://onlinestatbook.com/2/regression/accuracy.html
+#finding the delay that minimize the standard error of the estimate using minimal absolute error (MAE)
+
 del.430ABA %>% group_by(t) %>% 
   summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1)))->sum.res.430ABA
-
 
 min(sum.res.430ABA$MAE)
 sum.res.430ABA$t[sum.res.430ABA$MAE==min(sum.res.430ABA$MAE)]
@@ -417,10 +377,7 @@ p<-ggplot(data=sum.res.430ABA, aes(x=t, y=MAE))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("MAE_REV_KRAB-Split-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 
-
-
-
-
+#Same analysis, for KRAB-dCas9
 mean(REVSP428$norm.bfp[REVSP428$time==0])->R
 mean(REVSP428$fc.cherry[REVSP428$time==0])->Y
 state<-c(R=1, Y=Y/0.036)
@@ -437,13 +394,8 @@ parameters<-c(t1.2=0.37510,
               K=0.319691, n=2.210463, alpha=0.036
 )
 
-
 time <- seq(0, 150, by = 0.01)
 out428 <- ode(y=state,times=time, func=ode1, parms=parameters)
-diagnostics(out428)
-
-
-
 
 data.frame()->delays428
 for (t in seq(0, 25, by = 0.5)){
@@ -457,8 +409,6 @@ for (t in seq(0, 25, by = 0.5)){
 delays428 %>% 
   filter()->del.428
 
-
-
 REVSP428[, c(4,9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP428.m
 del.428<-merge(del.428, REVSP428.m, all.x = T)
 del.428 %>% mutate(res=m.fc-Y)->del.428
@@ -466,7 +416,6 @@ del.428 %>% group_by(t) %>%
   summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1)))->sum.res.428
 min(sum.res.428$MAE)
 sum.res.428$t[sum.res.428$MAE==min(sum.res.428$MAE)]
-
 
 p<-ggplot(data=sum.res.428, aes(x=t, y=MAE))+
   geom_point(size=.1, alpha=0.4, color="black") +
@@ -481,7 +430,7 @@ fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm")
 ggsave("MAE_REV_KRAB-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 
 
-
+#Same analysis for HDAC4-dCas9
 mean(REVSP427$norm.bfp[REVSP427$time==0])->R
 mean(REVSP427$fc.cherry[REVSP427$time==0])->Y
 state<-c(R=1, Y=Y/0.036)
@@ -511,10 +460,6 @@ del.427 %>% group_by(t) %>%
 min(sum.res.427$MAE)
 sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)]
 
-
-
-
-
 p<-ggplot(data=sum.res.427, aes(x=t, y=MAE))+
   geom_point(size=.1, alpha=0.4, color="black") +
   geom_point(data=sum.res.427, aes(x=sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)], y=min(MAE)), size=.8, alpha=1, color=mypalout[1]) +
@@ -527,12 +472,9 @@ p<-ggplot(data=sum.res.427, aes(x=t, y=MAE))+
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
 ggsave("MAE_REV_HDAC4-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 
-
-
 mean(REVSP430$norm.bfp[REVSP430$time==0])->R
 mean(REVSP430$fc.cherry[REVSP430$time==0])->Y
 state<-c(R=1, Y=Y/0.036)
-
 parameters<-c(t1.2=0.6615 ,
               K=0.75431, n=1.00415, alpha=0.036
 )
@@ -557,8 +499,6 @@ del.430 %>% group_by(t) %>%
   summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1)))->sum.res.430
 min(sum.res.430$MAE)
 sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)]
-
-
 p<-ggplot(data=sum.res.430, aes(x=t, y=MAE))+
   geom_point(size=.1, alpha=0.4, color="black") +
   geom_point(data=sum.res.430, aes(x=sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)], y=min(MAE)), size=.8, alpha=1, color=mypalout[1]) +
@@ -580,8 +520,6 @@ sum.res.428$t[sum.res.428$MAE==min(sum.res.428$MAE)]
 sum.res.430ABA$t[sum.res.430ABA$MAE==min(sum.res.430ABA$MAE)]
 #for hdac4-dcas9
 sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)]
-
-
 
 
 #run again the ODE models, including the delays
