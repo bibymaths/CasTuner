@@ -10,15 +10,18 @@ library(gridExtra)
 library(egg)
 library(ggridges)
 library(ggsci)
+
 #set theme for plotting
 theme_set(theme_classic() +
-            theme(legend.text = element_text(size = 6, family = "Arial"), panel.border = element_rect(color = "black", fill = NA, size = 0.5),
-                  axis.line = element_blank(), axis.text = element_text(size = 6, family = "Arial", color= "black"),
+            theme(legend.text = element_text(size = 6), panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+                  axis.line = element_blank(), axis.text = element_text(size = 6, color= "black"),
                   axis.text.x = element_text(vjust = 0.5, color= "black"),
                   axis.text.y = element_text(vjust = 0.5, color= "black"),
-                  axis.title = element_text(size = 6, family = "Arial"), strip.text = element_text(size = 6, family = "Arial", color= "black"),
+                  axis.title = element_text(size = 6), strip.text = element_text(size = 6, color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 mypal<-mypal<- pal_npg("nrc", alpha = 1)(2)
+
+out_path='output'
 
 #load non-fluorescent control for background extraction
 
@@ -34,6 +37,8 @@ sing_g <- openCyto:::.singletGate(BoundaryFrame, channels = chnl)
 p <- autoplot(BoundaryFrame, x = chnl[1], y = chnl[2])
 p + geom_gate(sing_g)
 Singlets_MyFlowSet<-Subset(MyFlowSet, bou_g%&% sing_g)
+
+
 #calculate median
 medianexp<- as.data.frame(fsApply(Singlets_MyFlowSet, each_col, median))
 #median bfp and and mcherry (mean of medians)
@@ -52,31 +57,27 @@ sing_g <- openCyto:::.singletGate(BoundaryFrame, channels = chnl)
 p <- autoplot(BoundaryFrame, x = chnl[1], y = chnl[2])
 p + geom_gate(sing_g)
 Singlets_MyFlowSet<-Subset(MyFlowSet, bou_g%&% sing_g)
+
 # extract normalized median expression
 #1 subtract bfp and mcherry of negative control
 Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -mBFP_neg)
 Norm_Singlets_MyFlowSet<- transform(Singlets_MyFlowSet, transformList('BV421-A' ,Transf))
 Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -mmCherry_neg)
 Norm_Singlets_MyFlowSet<- transform(Norm_Singlets_MyFlowSet, transformList('PE-A' ,Transf))
+
 #take median and extract
 medianexp<- as.data.frame(fsApply(Norm_Singlets_MyFlowSet, each_col, median))
 medianexp<-medianexp[, c(7:8)]
-
-
 medianexp %>% rownames_to_column()->medianexp
 medianexp %>% separate(1, c( NA, NA, "plasmid", "exp", "rep", "time", NA, NA), sep = "_") ->medianexp
 medianexp$time<-as.numeric(medianexp$time)
-
 medianexp$plasmid<-as.factor(medianexp$plasmid)
-medianexp %>% group_by(plasmid) %>% fct_relevel(plasmid, levels=c("SP430", "SP428", "SP430ABA", "SP427", "SP411"))
-#sample "SP430" is dCas9, "SP428" is KRAB-dCas9, "SP430ABA" is Split-KRAB-dCas9, "SP411" is CasRx.
 
+#sample "SP430" is dCas9, "SP428" is KRAB-dCas9, "SP430ABA" is Split-KRAB-dCas9, "SP411" is CasRx.
 #the samples that we need are those with exp=="Rev"
 medianexp %>% dplyr::filter(exp=="Rev")->REV
 
 #Do min-max scaling of BFP level, with max as the mean for time-points after 10h and min as bfp mean at time 0
-
-
 REV %>% group_by(plasmid) %>% filter(time>10) %>% 
   summarize(mean.final=mean((`BV421-A`)))->mean.final
 REV<-merge(REV, mean.final, all.x = T)
@@ -99,8 +100,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP430A.D<-fit
-
-
+half.time=data.frame(plasmid = 'SP430A.D', halftime = coef(fit))
 
 p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -112,10 +112,9 @@ p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   scale_fill_npg()
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_SP430ABA_fitting.pdf", fix, device=cairo_pdf)
+ggsave("REV_SP430ABA_fitting.pdf", fix, path=out_path)
 
 #fit for dCas9 for normalized (min-max scaled) data
-
 REV %>% filter(plasmid=="SP430")->REVSP430
 yf=0
 y0=1
@@ -127,8 +126,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP430.D<-fit
-
-
+half.time=rbind(half.time,c('SP430.D',coef(fit)))
 
 p<-ggplot(REVSP430,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -140,7 +138,7 @@ p<-ggplot(REVSP430,aes(time,norm.bfp))+
   scale_fill_npg()
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_dCas9_fitting.pdf", fix, device=cairo_pdf)
+ggsave("REV_dCas9_fitting.pdf", fix, path=out_path)
 
 #fit for KRAB-dCas9 for normalized (min-max scaled) data
 
@@ -155,8 +153,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP428.D<-fit
-
-
+half.time=rbind(half.time,c('SP428.D',coef(fit)))
 
 p<-ggplot(REVSP428,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -168,7 +165,7 @@ p<-ggplot(REVSP428,aes(time,norm.bfp))+
   scale_fill_npg()
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_KRAB-dCas9_fitting.pdf", fix, device=cairo_pdf)
+ggsave("REV_KRAB-dCas9_fitting.pdf", fix, path=out_path)
 
 #fit for HDAC4-dCas9 for normalized (min-max scaled) data
 
@@ -183,8 +180,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP427.D<-fit
-
-
+half.time=rbind(half.time,c('SP427.D',coef(fit)))
 
 p<-ggplot(REVSP427,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -196,7 +192,7 @@ p<-ggplot(REVSP427,aes(time,norm.bfp))+
   scale_fill_npg()
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_HDAC4-dCas9_fitting.pdf", fix, device=cairo_pdf)
+ggsave("REV_HDAC4-dCas9_fitting.pdf", fix, path=out_path)
 
 #fit for CasRx for normalized (min-max scaled) data
 
@@ -211,8 +207,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP411.D<-fit
-
-
+half.time=rbind(half.time,c('SP411.D',coef(fit)))
 
 p<-ggplot(REVSP411,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -224,7 +219,7 @@ p<-ggplot(REVSP411,aes(time,norm.bfp))+
   scale_fill_npg()
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_CasRx_fitting.pdf", fix, device=cairo_pdf)
+ggsave("REV_CasRx_fitting.pdf", fix, path=out_path)
 
 #summary of fittings
 
@@ -233,3 +228,6 @@ summary(SP430A.D)
 summary(SP428.D)
 summary(SP427.D)
 summary(SP411.D)
+
+write_csv(half.time,file='output/half_times_downregulation.csv')
+

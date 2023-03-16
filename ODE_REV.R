@@ -10,14 +10,19 @@ library(gridExtra)
 library(egg)
 library(ggridges)
 library(ggsci)
+library(deSolve)
+
 #set theme
 theme_set(theme_classic() +
-            theme(legend.text = element_text(size = 6, family = "Arial"), panel.border = element_rect(color = "black", fill = NA, size = 0.5),
-                  axis.line = element_blank(), axis.text = element_text(size = 6, family = "Arial", color= "black"),
+            theme(legend.text = element_text(size = 6), panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+                  axis.line = element_blank(), axis.text = element_text(size = 6, color= "black"),
                   axis.text.x = element_text(vjust = 0.5, color= "black"),
                   axis.text.y = element_text(vjust = 0.5, color= "black"),
-                  axis.title = element_text(size = 6, family = "Arial"), strip.text = element_text(size = 6, family = "Arial", color= "black"),
+                  axis.title = element_text(size = 6), strip.text = element_text(size = 6, color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
+
+out_path='output'
+
 #load non-fluorescent control for background fluorescence subtraction
 MyFlowSet <- read.flowSet(path="fcs_files/NFC", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
@@ -33,6 +38,7 @@ Singlets_MyFlowSet<-Subset(MyFlowSet, bou_g%&% sing_g)
 medianexp<- as.data.frame(fsApply(Singlets_MyFlowSet, each_col, median))
 mBFP_neg<-mean(medianexp[c(1:3), 7])
 mmCherry_neg<-mean(medianexp[c(1:3), 8])
+
 #load time-course data, remove background fluorescence, take median
 MyFlowSet <- read.flowSet(path="fcs_files/time-course_data", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
@@ -56,7 +62,6 @@ medianexp %>% rownames_to_column()->medianexp
 medianexp %>% separate(1, c( NA, NA, "plasmid", "exp", "rep", "time", NA, NA), sep = "_") ->medianexp
 medianexp$time<-as.numeric(medianexp$time)
 medianexp$plasmid<-as.factor(medianexp$plasmid)
-medianexp %>% group_by(plasmid) %>% fct_relevel(plasmid, levels=c("SP430", "SP428", "SP430ABA", "SP427", "SP411"))
 
 #calculate maximal mCherry (which is mCherry in CasRx experiment at last time point -150h-) for fold change calculation
 medianexp %>% dplyr::filter(exp=="Rev")->REV
@@ -64,6 +69,7 @@ REV %>% dplyr::filter(time==150)->REV150
 REV150 %>% filter(plasmid=="SP411") %>% summarize( mmcherry=mean(`PE-A`))->t0rev2
 merge(x=REV,y=t0rev2,  all.x=T)->REV
 REV %>% mutate(fc.cherry=`PE-A`/mmcherry)->REV
+
 #mean-max scaling of bfp between time 0 and average at time >10h.
 REV %>% group_by(plasmid) %>% filter(time>10) %>% 
   summarize(mean.final=mean((`BV421-A`)))->mean.final
@@ -80,6 +86,7 @@ REV %>% group_by(plasmid) %>%
 
 #2 methods work the same
 #method 1
+REV %>% filter(plasmid=="SP411")->REVSP411
 yf=1
 y0=mean(REVSP411$fc.cherry[REVSP411$time==0])
 REVSP411$time->t
@@ -102,7 +109,6 @@ summary(fit)
 #same result: std.error 0.003 is very small
 
 #Therefore, reporter upregulation in the case of CasRx can equivalently be written as
-library(ggsci)
 mypalout<-pal_npg(alpha = 1)(5)
 Y411<-Y
 YF411<-1
@@ -113,8 +119,8 @@ Reporter_411<-stat_function(fun=function(time){YF411+((Y411-YF411)*exp(-time*0.0
 REV %>% filter(plasmid=="SP411")->REVSP411
 mean(REVSP411$norm.bfp[REVSP411$time==0])->R
 mean(REVSP411$fc.cherry[REVSP411$time==0])->Y
-library(deSolve)
-state<-c(R=1, Y=Y/0.036)
+
+state<-c(R=1, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2) #in this way this tend to 0 with a dynamic dependent from t1.2 (fitted)
@@ -125,7 +131,7 @@ ode1<- function(t, state, parameters) {
 } 
 
 parameters<-c(t1.2=0.21911,
-              K=0.372032 , n=1.049008 , alpha=0.036
+              K=0.372032 , n=1.049008 , alpha=alphamcherry
 )
 
 time <- seq(0, 150, by = 0.01)
@@ -136,7 +142,7 @@ out411[,3]*(0.04)->out411[,3]
 mean(REVSP430$norm.bfp[REVSP430$time==0])->R
 mean(REVSP430$fc.cherry[REVSP430$time==0])->Y
 
-state<-c(R=R, Y=Y/0.036)
+state<-c(R=R, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2)
@@ -146,13 +152,13 @@ ode1<- function(t, state, parameters) {
   )
 } 
 parameters<-c(t1.2=0.6615 ,
-              K=0.75431, n=1.00415, alpha=0.036
+              K=0.75431, n=1.00415, alpha=alphamcherry
 )
 
 
 time <- seq(0, 150, by = 0.01)
 out430 <- ode(y=state,times=time, func=ode1, parms=parameters)
-out430[,3]<-out430[,3]*0.036
+out430[,3]<-out430[,3]*alphamcherry
 p<-ggplot(REVSP430,aes(time,fc.cherry))+
   geom_point(size=.6, alpha=0.4, color="#E64B35FF") +
   coord_cartesian(x=c(0,150),y=c(0,1.3))+
@@ -180,7 +186,7 @@ REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
 
 mean(REVSP430ABA$norm.bfp[REVSP430ABA$time==0])->R
 mean(REVSP430ABA$fc.cherry[REVSP430ABA$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2)
@@ -191,7 +197,7 @@ ode1<- function(t, state, parameters) {
 } 
 
 parameters<-c(t1.2=0.87,
-              K=0.058, n=0.80, alpha=0.036
+              K=0.058, n=0.80, alpha=alphamcherry
 )
 
 
@@ -202,7 +208,7 @@ diagnostics(out430ABA)
 #note that "ode" here is inaccurate, so I use another computing method
 out430ABA <- lsodes(y=state,times=time, func=ode1, parms=parameters)
 diagnostics(out430ABA)
-out430ABA[,3]<-out430ABA[,3]*0.036
+out430ABA[,3]<-out430ABA[,3]*alphamcherry
 p<-ggplot(REVSP430ABA,aes(time,fc.cherry))+
   geom_point(size=.6, alpha=0.4, color="#E64B35FF") +
   coord_cartesian(x=c(0,150),y=c(0,1.3))+
@@ -229,7 +235,7 @@ REV %>% filter(plasmid=="SP428")->REVSP428
 
 mean(REVSP428$norm.bfp[REVSP428$time==0])->R
 mean(REVSP428$fc.cherry[REVSP428$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2)
@@ -240,7 +246,7 @@ ode1<- function(t, state, parameters) {
 } 
 
 parameters<-c(t1.2=0.37510,
-              K=0.319691, n=2.210463, alpha=0.036
+              K=0.319691, n=2.210463, alpha=alphamcherry
 )
 
 
@@ -249,7 +255,7 @@ out428 <- ode(y=state,times=time, func=ode1, parms=parameters)
 diagnostics(out428)
 
 
-out428[,3]<-out428[,3]*0.036
+out428[,3]<-out428[,3]*alphamcherry
 p<-ggplot(REVSP428,aes(time,fc.cherry))+
   geom_point(size=.6, alpha=0.4, color="#E64B35FF") +
   coord_cartesian(x=c(0,150),y=c(0,1.3))+
@@ -276,7 +282,7 @@ REV %>% filter(plasmid=="SP427")->REVSP427
 
 mean(REVSP427$norm.bfp[REVSP427$time==0])->R
 mean(REVSP427$fc.cherry[REVSP427$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2)
@@ -287,7 +293,7 @@ ode1<- function(t, state, parameters) {
 } 
 
 parameters<-c(t1.2=0.65393,
-              K=0.417969, n=3.181102, alpha=0.036
+              K=0.417969, n=3.181102, alpha=alphamcherry
 )
 
 
@@ -296,7 +302,7 @@ out427 <- ode(y=state,times=time, func=ode1, parms=parameters)
 diagnostics(out427)
 
 
-out427[,3]<-out427[,3]*0.036
+out427[,3]<-out427[,3]*alphamcherry
 p<-ggplot(REVSP427,aes(time,fc.cherry))+
   geom_point(size=.6, alpha=0.4, color="#E64B35FF") +
   coord_cartesian(x=c(0,150),y=c(0,1.3))+
@@ -325,7 +331,7 @@ REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
 
 mean(REVSP430ABA$norm.bfp[REVSP430ABA$time==0])->R
 mean(REVSP430ABA$fc.cherry[REVSP430ABA$time==0])->Y
-state<-c(R=R, Y=Y/0.036)
+state<-c(R=R, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-   - R* (log(2)/t1.2)
@@ -335,19 +341,19 @@ ode1<- function(t, state, parameters) {
   )
 } 
 parameters<-c( t1.2=0.8797,
-               K=0.058633, n=0.806486, alpha=0.036
+               K=0.058633, n=0.806486, alpha=alphamcherry
 )
 
 
 time <- seq(0, 150, by = 0.01)
 out430ABA <- lsodes(y=state,times=time, func=ode1, parms=parameters)
-out430ABA[,3]<-out430ABA[,3]*0.036
+out430ABA[,3]<-out430ABA[,3]*alphamcherry
 data.frame()->delays430ABA
 for (t in seq(0, 25, by = 0.5)){
   time <- seq(0, 150, by = 0.01)
   delay<-time+t
   out430ABAd <- lsodes(y=state,times=delay, func=ode1, parms=parameters)
-  out430ABAd[,3]<-out430ABAd[,3]*0.036
+  out430ABAd[,3]<-out430ABAd[,3]*alphamcherry
   sim<-cbind(as.data.frame(out430ABAd), t)
   delays430ABA<- rbind(delays430ABA,sim)
 }
@@ -380,7 +386,7 @@ ggsave("MAE_REV_KRAB-Split-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 #Same analysis, for KRAB-dCas9
 mean(REVSP428$norm.bfp[REVSP428$time==0])->R
 mean(REVSP428$fc.cherry[REVSP428$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2)
@@ -391,7 +397,7 @@ ode1<- function(t, state, parameters) {
 } 
 
 parameters<-c(t1.2=0.37510,
-              K=0.319691, n=2.210463, alpha=0.036
+              K=0.319691, n=2.210463, alpha=alphamcherry
 )
 
 time <- seq(0, 150, by = 0.01)
@@ -402,7 +408,7 @@ for (t in seq(0, 25, by = 0.5)){
   time <- seq(0, 150, by = 0.01)
   delay<-time+t
   out428d <- lsodes(y=state,times=delay, func=ode1, parms=parameters)
-  out428d[,3]<-out428d[,3]*0.036
+  out428d[,3]<-out428d[,3]*alphamcherry
   sim<-cbind(as.data.frame(out428d), t)
   delays428<- rbind(delays428,sim)
 }
@@ -433,10 +439,10 @@ ggsave("MAE_REV_KRAB-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 #Same analysis for HDAC4-dCas9
 mean(REVSP427$norm.bfp[REVSP427$time==0])->R
 mean(REVSP427$fc.cherry[REVSP427$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 
 parameters<-c(t1.2=0.65393,
-              K=0.417969, n=3.181102, alpha=0.036
+              K=0.417969, n=3.181102, alpha=alphamcherry
 )
 
 
@@ -446,7 +452,7 @@ for (t in seq(0, 25, by = 0.5)){
   time <- seq(0, 150, by = 0.01)
   delay<-time+t
   out427d <- lsodes(y=state,times=delay, func=ode1, parms=parameters)
-  out427d[,3]<-out427d[,3]*0.036
+  out427d[,3]<-out427d[,3]*alphamcherry
   sim<-cbind(as.data.frame(out427d), t)
   delays427<- rbind(delays427,sim)
 }
@@ -474,9 +480,9 @@ ggsave("MAE_REV_HDAC4-dCas9_mcherry.pdf", fix, device=cairo_pdf)
 
 mean(REVSP430$norm.bfp[REVSP430$time==0])->R
 mean(REVSP430$fc.cherry[REVSP430$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 parameters<-c(t1.2=0.6615 ,
-              K=0.75431, n=1.00415, alpha=0.036
+              K=0.75431, n=1.00415, alpha=alphamcherry
 )
 
 
@@ -486,7 +492,7 @@ for (t in seq(0, 25, by = 0.5)){
   time <- seq(0, 150, by = 0.01)
   delay<-time+t
   out430d <- lsodes(y=state,times=delay, func=ode1, parms=parameters)
-  out430d[,3]<-out430d[,3]*0.036
+  out430d[,3]<-out430d[,3]*alphamcherry
   sim<-cbind(as.data.frame(out430d), t)
   delays430<- rbind(delays430,sim)
 }
@@ -529,7 +535,7 @@ REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
 
 mean(REVSP430ABA$norm.bfp[REVSP430ABA$time==0])->R
 mean(REVSP430ABA$fc.cherry[REVSP430ABA$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2)
@@ -540,18 +546,18 @@ ode1<- function(t, state, parameters) {
 } 
 
 parameters<-c(t1.2=0.87,
-              K=0.058, n=0.80, alpha=0.036
+              K=0.058, n=0.80, alpha=alphamcherry
 )
 
 
 time <- seq(0+16, 150+16, by = 0.01)
 out430ABAd <- lsodes(y=state,times=time, func=ode1, parms=parameters)
-out430ABAd[,3]<-out430ABAd[,3]*0.036
+out430ABAd[,3]<-out430ABAd[,3]*alphamcherry
 
 
 mean(REVSP428$norm.bfp[REVSP428$time==0])->R
 mean(REVSP428$fc.cherry[REVSP428$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2)
@@ -562,18 +568,18 @@ ode1<- function(t, state, parameters) {
 } 
 
 parameters<-c(t1.2=0.37510,
-              K=0.319691, n=2.210463, alpha=0.036
+              K=0.319691, n=2.210463, alpha=alphamcherry
 )
 
 
 time <- seq(0+18.5, 150+18.5, by = 0.01)
 out428d <- ode(y=state,times=time, func=ode1, parms=parameters)
 
-out428d[,3]<-out428d[,3]*0.036
+out428d[,3]<-out428d[,3]*alphamcherry
 
 mean(REVSP427$norm.bfp[REVSP427$time==0])->R
 mean(REVSP427$fc.cherry[REVSP427$time==0])->Y
-state<-c(R=1, Y=Y/0.036)
+state<-c(R=1, Y=Y/alphamcherry)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
     dR <-  - R* (log(2)/t1.2)
@@ -584,13 +590,13 @@ ode1<- function(t, state, parameters) {
 } 
 
 parameters<-c(t1.2=0.65393,
-              K=0.417969, n=3.181102, alpha=0.036
+              K=0.417969, n=3.181102, alpha=alphamcherry
 )
 
 
 time <- seq(0+6, 150+6, by = 0.01)
 out427d <- ode(y=state,times=time, func=ode1, parms=parameters)
-out427d[,3]<-out427d[,3]*0.036
+out427d[,3]<-out427d[,3]*alphamcherry
 
 p<-ggplot(REVSP427,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +
