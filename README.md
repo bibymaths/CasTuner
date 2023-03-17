@@ -21,7 +21,7 @@ Run file:  " Fitting hill curves to dose responses.R "
 
 Step 3.
 Estimate mCherry degradation rate from CasRx time-course
-Run file:  " ODE_REV.R" lines : 89-110
+Run file:  " ODE_REV.R" lines : 90-112
 
 Step 4a.
 Simulate ODE model using computed parameters from previous steps, to predict the dynamic of mCherry repression by each repressor system. Calculate if there is a delay from theoretical and simulated data.
