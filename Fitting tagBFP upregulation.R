@@ -20,7 +20,7 @@ theme_set(theme_classic() +
                   axis.title = element_text(size = 6), strip.text = element_text(size = 6, color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 
-out_path='output'
+out_path='plots'
 
 #load non-fluorescent control for background-subtraction
 MyFlowSet <- read.flowSet(path="fcs_files/NFC", min.limit=0.01)
@@ -91,7 +91,7 @@ KDSP430ABA$norm.bfp ->y
 fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 SP430A.U<-fit
-half.time=data.frame(plasmid = 'SP430A.U', halftime = coef(fit))
+half.time=data.frame(plasmid = 'SP430A', halftime = coef(fit))
 
 p<-ggplot(KDSP430ABA,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -114,7 +114,7 @@ KDSP430$norm.bfp ->y
 fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 SP430.U<-fit
-half.time=rbind(half.time,c('SP430.U',coef(fit)))
+half.time=rbind(half.time,c('SP430',coef(fit)))
 
 p<-ggplot(KDSP430,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -138,7 +138,7 @@ KDSP428$norm.bfp ->y
 fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 SP428.U<-fit
-half.time=rbind(half.time,c('SP428.U',coef(fit)))
+half.time=rbind(half.time,c('SP428',coef(fit)))
 
 p<-ggplot(KDSP428,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -162,7 +162,7 @@ KDSP427$norm.bfp ->y
 fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 SP427.U<-fit
-half.time=rbind(half.time,c('SP427.U',coef(fit)))
+half.time=rbind(half.time,c('SP427',coef(fit)))
 
 p<-ggplot(KDSP427,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -186,7 +186,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 
 SP411.U<-fit
-half.time=rbind(half.time,c('SP411.U',coef(fit)))
+half.time=rbind(half.time,c('SP411',coef(fit)))
 
 p<-ggplot(KDSP411,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -207,5 +207,5 @@ summary(SP428.U)
 summary(SP427.U)
 summary(SP411.U)
 
-write_csv(half.time,file='output/half_times_upregulation.csv')
+write_csv(half.time,file='parameters/half_times_upregulation.csv')
 

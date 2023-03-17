@@ -21,7 +21,7 @@ theme_set(theme_classic() +
                   strip.background = element_blank(), legend.title = element_blank()))
 mypal<-mypal<- pal_npg("nrc", alpha = 1)(2)
 
-out_path='output'
+out_path='plots'
 
 #load non-fluorescent control for background extraction
 
@@ -100,7 +100,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP430A.D<-fit
-half.time=data.frame(plasmid = 'SP430A.D', halftime = coef(fit))
+half.time=data.frame(plasmid = 'SP430A', halftime = coef(fit))
 
 p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -126,7 +126,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP430.D<-fit
-half.time=rbind(half.time,c('SP430.D',coef(fit)))
+half.time=rbind(half.time,c('SP430',coef(fit)))
 
 p<-ggplot(REVSP430,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -153,7 +153,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP428.D<-fit
-half.time=rbind(half.time,c('SP428.D',coef(fit)))
+half.time=rbind(half.time,c('SP428',coef(fit)))
 
 p<-ggplot(REVSP428,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -180,7 +180,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP427.D<-fit
-half.time=rbind(half.time,c('SP427.D',coef(fit)))
+half.time=rbind(half.time,c('SP427',coef(fit)))
 
 p<-ggplot(REVSP427,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -207,7 +207,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP411.D<-fit
-half.time=rbind(half.time,c('SP411.D',coef(fit)))
+half.time=rbind(half.time,c('SP411',coef(fit)))
 
 p<-ggplot(REVSP411,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -229,5 +229,5 @@ summary(SP428.D)
 summary(SP427.D)
 summary(SP411.D)
 
-write_csv(half.time,file='output/half_times_downregulation.csv')
+write_csv(half.time,file='parameters/half_times_downregulation.csv')
 

@@ -16,7 +16,7 @@ theme_set(theme_classic() +
                   axis.title = element_text(size = 6), strip.text = element_text(size = 6, color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 
-out_path='output'
+out_path='plots'
 
 # calculate background fluorescence of non fluorescent control for background subtraction
 fMyFlowSet <- read.flowSet(path="fcs_files/NFC", min.limit=0.01)
@@ -178,7 +178,7 @@ fit = nlsLM( y ~ K^n/(K^n+R^n),
              start = list(K = 0.1, n = 1),
              data = data)
 summarysp430A<-summary(fit)
-parameters =rbind(parameters,c('SP430',coef(fit)[1],coef(fit)[2]))
+parameters =rbind(parameters,c('SP430A',coef(fit)[1],coef(fit)[2]))
 p<-ggplot(SP430A,aes(norm.bfp, fc))+
   stat_function(fun=function(norm.bfp){1/(1+(norm.bfp/coef(fit)[1])^coef(fit)[2])}, color="black")+
   geom_point(size=.8, alpha=0.4, color="grey") +# adding connecting lines
@@ -194,4 +194,4 @@ summarysp428
 summarysp430A
 summarysp430
 
-write_csv(parameters,file='output/Hill_parameters.csv')
+write_csv(parameters,file='parameters/Hill_parameters.csv')

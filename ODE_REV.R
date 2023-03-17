@@ -21,7 +21,7 @@ theme_set(theme_classic() +
                   axis.title = element_text(size = 6), strip.text = element_text(size = 6, color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 
-out_path='output'
+out_path='plots'
 
 #load non-fluorescent control for background fluorescence subtraction
 MyFlowSet <- read.flowSet(path="fcs_files/NFC", min.limit=0.01)
@@ -98,7 +98,7 @@ summary(fit)
 
 mcherry.halflife<-fit
 
-alphamcherry<-log(2)/coef(fit)[1]
+alphamcherry<-as.numeric(log(2)/coef(fit)[1])
  
 # 0.0360691
 #method 2
@@ -110,9 +110,15 @@ summary(fit)
 
 #Therefore, reporter upregulation in the case of CasRx can equivalently be written as
 mypalout<-pal_npg(alpha = 1)(5)
-Y411<-Y
-YF411<-1
-Reporter_411<-stat_function(fun=function(time){YF411+((Y411-YF411)*exp(-time*0.04))}, color=mypalout[5])
+#Y411<-Y
+#YF411<-1
+#Reporter_411<-stat_function(fun=function(time){YF411+((Y411-YF411)*exp(-time*0.04))}, color=mypalout[5])
+
+# Loading parameters estimated from tBFP time courses and dose-response curves
+t_down = read.csv('parameters/half_times_downregulation.csv') %>% rename(t_down=halftime)
+t_up = read.csv('parameters/half_times_upregulation.csv') %>% rename(t_up=halftime)
+hill_pars = read.csv('parameters/Hill_parameters.csv')
+all_par = t_down %>% left_join(t_up) %>% left_join(hill_pars)
 
 #Now we simulate the ODE model for CasRx
 
@@ -129,16 +135,16 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-
-parameters<-c(t1.2=0.21911,
-              K=0.372032 , n=1.049008 , alpha=alphamcherry
-)
+sel_par = all_par %>% filter(plasmid=='SP411')
+#äparameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+parameters<-c(t1.2=0.21911, K=0.372032 , n=1.049008 , alpha=0.036)
 
 time <- seq(0, 150, by = 0.01)
 out411 <- ode(y=state,times=time, func=ode1, parms=parameters)
 out411[,3]*(0.04)->out411[,3]
 
 #Now we simulate the model for dCas9
+REV %>% filter(plasmid=="SP430")->REVSP430
 mean(REVSP430$norm.bfp[REVSP430$time==0])->R
 mean(REVSP430$fc.cherry[REVSP430$time==0])->Y
 
@@ -150,10 +156,10 @@ ode1<- function(t, state, parameters) {
     return (list(c (dR, dY)))
   }
   )
-} 
-parameters<-c(t1.2=0.6615 ,
-              K=0.75431, n=1.00415, alpha=alphamcherry
-)
+}
+sel_par = all_par %>% filter(plasmid=='SP430')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.6615 ,K=0.75431, n=1.00415, alpha=0.036)
 
 
 time <- seq(0, 150, by = 0.01)
@@ -167,7 +173,7 @@ p<-ggplot(REVSP430,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_dCas9_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_dCas9_Hill.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP430,aes(time,norm.bfp))+
   geom_point(size=.6, alpha=0.4, color="#4DBBD5FF") +
@@ -177,13 +183,11 @@ p<-ggplot(REVSP430,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, path=out_path)
 
 
 #Now we simulate the model for KRAB-Split-dCas9
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
-
-
 mean(REVSP430ABA$norm.bfp[REVSP430ABA$time==0])->R
 mean(REVSP430ABA$fc.cherry[REVSP430ABA$time==0])->Y
 state<-c(R=1, Y=Y/alphamcherry)
@@ -196,10 +200,9 @@ ode1<- function(t, state, parameters) {
   )
 } 
 
-parameters<-c(t1.2=0.87,
-              K=0.058, n=0.80, alpha=alphamcherry
-)
-
+sel_par = all_par %>% filter(plasmid=='SP430A')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.87,K=0.058, n=0.80, alpha=alphamcherry)
 
 time <- seq(0, 150, by = 0.01)
 out430ABA <- ode(y=state,times=time, func=ode1, parms=parameters)
@@ -217,7 +220,7 @@ p<-ggplot(REVSP430ABA,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430ABA), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_KRAB-Split-dCas9_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_KRAB-Split-dCas9_Hill.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   geom_point(size=.6, alpha=0.4, color="#4DBBD5FF") +
@@ -227,11 +230,10 @@ p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430ABA), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_KRAB-Split-dCas9_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_KRAB-Split-dCas9_Hill.pdf", fix, path=out_path)
 
 #Now we simulate the model for KRAB-dCas9
 REV %>% filter(plasmid=="SP428")->REVSP428
-
 
 mean(REVSP428$norm.bfp[REVSP428$time==0])->R
 mean(REVSP428$fc.cherry[REVSP428$time==0])->Y
@@ -244,16 +246,13 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-
-parameters<-c(t1.2=0.37510,
-              K=0.319691, n=2.210463, alpha=alphamcherry
-)
-
+sel_par = all_par %>% filter(plasmid=='SP428')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.37510, K=0.319691, n=2.210463, alpha=0.036)
 
 time <- seq(0, 150, by = 0.01)
 out428 <- ode(y=state,times=time, func=ode1, parms=parameters)
 diagnostics(out428)
-
 
 out428[,3]<-out428[,3]*alphamcherry
 p<-ggplot(REVSP428,aes(time,fc.cherry))+
@@ -264,7 +263,7 @@ p<-ggplot(REVSP428,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out428), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_KRAB-dCas9_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_KRAB-dCas9_Hill.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP428,aes(time,norm.bfp))+
   geom_point(size=.6, alpha=0.4, color="#4DBBD5FF") +
@@ -274,11 +273,10 @@ p<-ggplot(REVSP428,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out428), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, path=out_path)
 
 #Now we simulate the model for HDAC4-dCas9
 REV %>% filter(plasmid=="SP427")->REVSP427
-
 
 mean(REVSP427$norm.bfp[REVSP427$time==0])->R
 mean(REVSP427$fc.cherry[REVSP427$time==0])->Y
@@ -292,15 +290,13 @@ ode1<- function(t, state, parameters) {
   )
 } 
 
-parameters<-c(t1.2=0.65393,
-              K=0.417969, n=3.181102, alpha=alphamcherry
-)
-
+sel_par = all_par %>% filter(plasmid=='SP427')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.65393, K=0.417969, n=3.181102, alpha=alphamcherry)
 
 time <- seq(0, 150, by = 0.01)
 out427 <- ode(y=state,times=time, func=ode1, parms=parameters)
 diagnostics(out427)
-
 
 out427[,3]<-out427[,3]*alphamcherry
 p<-ggplot(REVSP427,aes(time,fc.cherry))+
@@ -311,7 +307,7 @@ p<-ggplot(REVSP427,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out427), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_HDAC4-dCas9_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_HDAC4-dCas9_Hill.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP427,aes(time,norm.bfp))+
   geom_point(size=.6, alpha=0.4, color="#4DBBD5FF") +
@@ -321,13 +317,12 @@ p<-ggplot(REVSP427,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out427), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_HDAC4-dCas9_Hill.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_HDAC4-dCas9_Hill.pdf", fix, path=out_path)
 
 #Simulate the models again but adding delays to find which model (and therefore delay) fits best
 
 #for Krab-Split-dCas9:
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
-
 
 mean(REVSP430ABA$norm.bfp[REVSP430ABA$time==0])->R
 mean(REVSP430ABA$fc.cherry[REVSP430ABA$time==0])->Y
@@ -340,9 +335,10 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-parameters<-c( t1.2=0.8797,
-               K=0.058633, n=0.806486, alpha=alphamcherry
-)
+
+sel_par = all_par %>% filter(plasmid=='SP430A')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c( t1.2=0.8797, K=0.058633, n=0.806486, alpha=0.36)
 
 
 time <- seq(0, 150, by = 0.01)
@@ -359,17 +355,16 @@ for (t in seq(0, 25, by = 0.5)){
 }
 delays430ABA %>% 
   filter()->del.430ABA 
-REVSP430ABA[, c(4,9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP430ABA.m
+REVSP430ABA[, c(4:9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP430ABA.m
 del.430ABA<-merge(del.430ABA, REVSP430ABA.m, all.x = T)
 del.430ABA %>% mutate(res=m.fc-Y)->del.430ABA
-#finding the delay that minimize the standard error of the estimate using minimal absolute error (MAE)
 
+#finding the delay that minimize the standard error of the estimate using minimal absolute error (MAE)
 del.430ABA %>% group_by(t) %>% 
-  summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1)))->sum.res.430ABA
+  summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1))->sum.res.430ABA
 
 min(sum.res.430ABA$MAE)
 sum.res.430ABA$t[sum.res.430ABA$MAE==min(sum.res.430ABA$MAE)]
-
 
 p<-ggplot(data=sum.res.430ABA, aes(x=t, y=MAE))+
   geom_point(size=.1, alpha=0.4, color="black") +
@@ -381,7 +376,7 @@ p<-ggplot(data=sum.res.430ABA, aes(x=t, y=MAE))+
   geom_line(data=sum.res.430ABA, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_REV_KRAB-Split-dCas9_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_REV_KRAB-Split-dCas9_mcherry.pdf", fix, path=out_path)
 
 #Same analysis, for KRAB-dCas9
 mean(REVSP428$norm.bfp[REVSP428$time==0])->R
@@ -395,10 +390,9 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-
-parameters<-c(t1.2=0.37510,
-              K=0.319691, n=2.210463, alpha=alphamcherry
-)
+sel_par = all_par %>% filter(plasmid=='SP428')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.37510, K=0.319691, n=2.210463, alpha=alphamcherry)
 
 time <- seq(0, 150, by = 0.01)
 out428 <- ode(y=state,times=time, func=ode1, parms=parameters)
@@ -415,11 +409,11 @@ for (t in seq(0, 25, by = 0.5)){
 delays428 %>% 
   filter()->del.428
 
-REVSP428[, c(4,9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP428.m
+REVSP428[, c(4:9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP428.m
 del.428<-merge(del.428, REVSP428.m, all.x = T)
 del.428 %>% mutate(res=m.fc-Y)->del.428
 del.428 %>% group_by(t) %>% 
-  summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1)))->sum.res.428
+  summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1))->sum.res.428
 min(sum.res.428$MAE)
 sum.res.428$t[sum.res.428$MAE==min(sum.res.428$MAE)]
 
@@ -433,7 +427,7 @@ p<-ggplot(data=sum.res.428, aes(x=t, y=MAE))+
   geom_line(data=sum.res.428, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_REV_KRAB-dCas9_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_REV_KRAB-dCas9_mcherry.pdf", fix, path=out_path)
 
 
 #Same analysis for HDAC4-dCas9
@@ -441,10 +435,9 @@ mean(REVSP427$norm.bfp[REVSP427$time==0])->R
 mean(REVSP427$fc.cherry[REVSP427$time==0])->Y
 state<-c(R=1, Y=Y/alphamcherry)
 
-parameters<-c(t1.2=0.65393,
-              K=0.417969, n=3.181102, alpha=alphamcherry
-)
-
+sel_par = all_par %>% filter(plasmid=='SP427')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.65393, K=0.417969, n=3.181102, alpha=alphamcherry)
 
 time <- seq(0, 150, by = 0.01)
 data.frame()->delays427
@@ -456,13 +449,13 @@ for (t in seq(0, 25, by = 0.5)){
   sim<-cbind(as.data.frame(out427d), t)
   delays427<- rbind(delays427,sim)
 }
-REVSP427[, c(4,9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP427.m
+REVSP427[, c(4:9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP427.m
 delays427 %>% 
   filter()->del.427
 del.427<-merge(del.427, REVSP427.m, all.x = T)
 del.427 %>% mutate(res=m.fc-Y)->del.427
 del.427 %>% group_by(t) %>% 
-  summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1)))->sum.res.427
+  summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1))->sum.res.427
 min(sum.res.427$MAE)
 sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)]
 
@@ -476,15 +469,16 @@ p<-ggplot(data=sum.res.427, aes(x=t, y=MAE))+
   geom_line(data=sum.res.427, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_REV_HDAC4-dCas9_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_REV_HDAC4-dCas9_mcherry.pdf", fix, path=out_path)
 
+#Same analysis for dCas9
 mean(REVSP430$norm.bfp[REVSP430$time==0])->R
 mean(REVSP430$fc.cherry[REVSP430$time==0])->Y
 state<-c(R=1, Y=Y/alphamcherry)
-parameters<-c(t1.2=0.6615 ,
-              K=0.75431, n=1.00415, alpha=alphamcherry
-)
 
+sel_par = all_par %>% filter(plasmid=='SP430')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.6615 ,K=0.75431, n=1.00415, alpha=alphamcherry)
 
 time <- seq(0, 150, by = 0.01)
 data.frame()->delays430
@@ -496,13 +490,13 @@ for (t in seq(0, 25, by = 0.5)){
   sim<-cbind(as.data.frame(out430d), t)
   delays430<- rbind(delays430,sim)
 }
-REVSP430[, c(4,9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP430.m
+REVSP430[, c(4:9)] %>% group_by(time) %>% summarize(m.fc=mean(fc.cherry))->REVSP430.m
 delays430 %>% 
   filter()->del.430
 del.430<-merge(del.430, REVSP430.m, all.x = T)
 del.430 %>% mutate(res=m.fc-Y)->del.430
 del.430 %>% group_by(t) %>% 
-  summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1)))->sum.res.430
+  summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1))->sum.res.430
 min(sum.res.430$MAE)
 sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)]
 p<-ggplot(data=sum.res.430, aes(x=t, y=MAE))+
@@ -515,24 +509,22 @@ p<-ggplot(data=sum.res.430, aes(x=t, y=MAE))+
   geom_line(data=sum.res.430, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_REV_dCas9_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_REV_dCas9_mcherry.pdf", fix, path=out_path)
 
 #the delays are
 #for dcas9
-sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)]
+delay_SP430 = sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)]
 #for krab-dcas9
-sum.res.428$t[sum.res.428$MAE==min(sum.res.428$MAE)]
+delay_SP428 =sum.res.428$t[sum.res.428$MAE==min(sum.res.428$MAE)]
 #for krab-split-dcas9
-sum.res.430ABA$t[sum.res.430ABA$MAE==min(sum.res.430ABA$MAE)]
+delay_SP430A =sum.res.430ABA$t[sum.res.430ABA$MAE==min(sum.res.430ABA$MAE)]
 #for hdac4-dcas9
-sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)]
+delay_SP427 =sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)]
 
 
 #run again the ODE models, including the delays
 
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
-
-
 mean(REVSP430ABA$norm.bfp[REVSP430ABA$time==0])->R
 mean(REVSP430ABA$fc.cherry[REVSP430ABA$time==0])->Y
 state<-c(R=1, Y=Y/alphamcherry)
@@ -545,12 +537,11 @@ ode1<- function(t, state, parameters) {
   )
 } 
 
-parameters<-c(t1.2=0.87,
-              K=0.058, n=0.80, alpha=alphamcherry
-)
+sel_par = all_par %>% filter(plasmid=='SP430A')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.87,K=0.058, n=0.80, alpha=0.036)
 
-
-time <- seq(0+16, 150+16, by = 0.01)
+time <- seq(0+delay_SP430A, 150+delay_SP430A, by = 0.01)
 out430ABAd <- lsodes(y=state,times=time, func=ode1, parms=parameters)
 out430ABAd[,3]<-out430ABAd[,3]*alphamcherry
 
@@ -567,12 +558,11 @@ ode1<- function(t, state, parameters) {
   )
 } 
 
-parameters<-c(t1.2=0.37510,
-              K=0.319691, n=2.210463, alpha=alphamcherry
-)
+sel_par = all_par %>% filter(plasmid=='SP428')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.37510, K=0.319691, n=2.210463, alpha=0.036)
 
-
-time <- seq(0+18.5, 150+18.5, by = 0.01)
+time <- seq(0+delay_SP428, 150+delay_SP428, by = 0.01)
 out428d <- ode(y=state,times=time, func=ode1, parms=parameters)
 
 out428d[,3]<-out428d[,3]*alphamcherry
@@ -589,12 +579,11 @@ ode1<- function(t, state, parameters) {
   )
 } 
 
-parameters<-c(t1.2=0.65393,
-              K=0.417969, n=3.181102, alpha=alphamcherry
-)
+sel_par = all_par %>% filter(plasmid=='SP427')
+parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=alphamcherry)
+#parameters<-c(t1.2=0.65393, K=0.417969, n=3.181102, alpha=0.036)
 
-
-time <- seq(0+6, 150+6, by = 0.01)
+time <- seq(0+delay_SP427, 150+delay_SP427, by = 0.01)
 out427d <- ode(y=state,times=time, func=ode1, parms=parameters)
 out427d[,3]<-out427d[,3]*alphamcherry
 
@@ -607,7 +596,7 @@ p<-ggplot(REVSP427,aes(time,fc.cherry))+
   geom_line(data=data.frame(out427d), aes(time, Y),lty=2)+
   geom_line(data=data.frame(out427), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_HDAC4-dCas9_6h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_HDAC4-dCas9_6h_delay.pdf", fix, path=out_path)
 
 
 p<-ggplot(REVSP428,aes(time,fc.cherry))+
@@ -619,9 +608,7 @@ p<-ggplot(REVSP428,aes(time,fc.cherry))+
   geom_line(data=data.frame(out428d), aes(time, Y),lty=2)+
   geom_line(data=data.frame(out428), aes(time, Y), lty=1)
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_KRAB-dCas9_18.5h_delay.pdf", fix, device=cairo_pdf)
-
-
+ggsave("REV_mCherry_KRAB-dCas9_18.5h_delay.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP430ABA,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +
@@ -633,7 +620,7 @@ p<-ggplot(REVSP430ABA,aes(time,fc.cherry))+
   geom_line(data=data.frame(out430ABA), aes(time, Y))
   
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_KRAB-Split-dCas9_16.5h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_KRAB-Split-dCas9_16.5h_delay.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP430,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +
@@ -644,7 +631,7 @@ p<-ggplot(REVSP430,aes(time,fc.cherry))+
   geom_line(data=data.frame(out430), aes(time, Y))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_dCas9_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_mCherry_dCas9_delay.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP411,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +
@@ -655,12 +642,7 @@ p<-ggplot(REVSP411,aes(time,fc.cherry))+
   geom_line(data=data.frame(out411), aes(time, Y))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_mCherry_CasRx_delay.pdf", fix, device=cairo_pdf)
-
-
-
-
-
+ggsave("REV_mCherry_CasRx_delay.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP427,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +
@@ -670,7 +652,7 @@ p<-ggplot(REVSP427,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out427), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_HDAC4-dCas9_6h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_HDAC4-dCas9_6h_delay.pdf", fix, path=out_path)
 
 
 p<-ggplot(REVSP428,aes(time,norm.bfp))+
@@ -681,7 +663,7 @@ p<-ggplot(REVSP428,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out428), aes(time, R), lty=1)
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_KRAB-dCas9_18.5h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_KRAB-dCas9_18.5h_delay.pdf", fix, path=out_path)
 
 
 
@@ -694,7 +676,7 @@ p<-ggplot(REVSP430ABA,aes(time,norm.BFP))+
   geom_line(data=data.frame(out430ABA), aes(time, R))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_KRAB-Split-dCas9_16.5h_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_KRAB-Split-dCas9_16.5h_delay.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP430,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +
@@ -705,7 +687,7 @@ p<-ggplot(REVSP430,aes(time,norm.bfp))+
   geom_line(data=data.frame(out430), aes(time, R))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_dCas9_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_dCas9_delay.pdf", fix, path=out_path)
 
 p<-ggplot(REVSP411,aes(time, norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +
@@ -716,7 +698,7 @@ p<-ggplot(REVSP411,aes(time, norm.bfp))+
   geom_line(data=data.frame(out411), aes(time, R))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("REV_tagBFP_CasRx_delay.pdf", fix, device=cairo_pdf)
+ggsave("REV_tagBFP_CasRx_delay.pdf", fix, path=out_path)
 
 
 
