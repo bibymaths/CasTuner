@@ -2,8 +2,8 @@
 
 Code associated with the manuscript 
 
-### CasTuner: a degron and CRISPR/Cas-based toolkit for analog tuning of endogenous gene expression
-### Gemma Noviello, Rutger A. F. Gjaltema and Edda G. Schulz  
+## CasTuner: a degron and CRISPR/Cas-based toolkit for analog tuning of endogenous gene expression
+#### Gemma Noviello, Rutger A. F. Gjaltema and Edda G. Schulz  
 
 This repository contains code and data for modelling of repression and derepression dynamics of CasTuner systems
 
