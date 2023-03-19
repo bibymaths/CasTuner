@@ -1,10 +1,15 @@
 # CasTuner
-Modelling of repression and derepression dynamics of CasTuner systems
+
+Code associated with the manuscript 
+
+### CasTuner: a degron and CRISPR/Cas-based toolkit for analog tuning of endogenous gene expression
+### Gemma Noviello, Rutger A. F. Gjaltema and Edda G. Schulz  
+
+This repository contains code and data for modelling of repression and derepression dynamics of CasTuner systems
 
 
 To execute this code, run the following R files with the order below.
 The raw data are also provided in locations specified in each R file.
-
 
 
 Step 1a.
@@ -15,22 +20,19 @@ Step 1b.
 Estimate the dynamic of degradation of Cas-Repressors upon dTAG-13 addition
 Run file: " Fitting tagBFP downregulation.R  "
 
-Step 2. 
-To know what is the dose-response relationship between repressors and target gene at the steady-state (assumed to be day 4 of titration: data corresponding to Supplementary Fig. 3e)
+Step 1c. 
+Fit the parameters of the dose-response relationship between repressors and target gene at the steady-state (assumed to be day 4 of titration: data corresponding to Supplementary Fig. 3e)
 Run file:  " Fitting hill curves to dose responses.R " 
 
-Step 3.
-Estimate mCherry degradation rate from CasRx time-course
-Run file:  " ODE_REV.R" lines : 90-112
-
-Step 4a.
-Simulate ODE model using computed parameters from previous steps, to predict the dynamic of mCherry repression by each repressor system. Calculate if there is a delay from theoretical and simulated data.
-Run file:  " ODE_KD.R " 
-
-Step 4b.
-Simulate ODE model using computed parameters from previous steps, to predict the dynamic of mCherry derepression by each repressor system. Calculate if there is a delay from theoretical and simulated data.
+Step 2.
+Simulate ODE model using computed parameters from previous steps, to predict the dynamic of mCherry derepression by each repressor system. This script also estimates the Cherry degradation rate from CasRx time-course. The script then tests whether there is a derepression delay by comparing experimental and simulated data.
 Run file:  " ODE_REV.R" 
 
+Step 3.
+Simulate ODE model using computed parameters from previous steps, to predict the dynamic of mCherry repression by each repressor system. The script then tests whether there is a repression delay by comparing experimental and simulated data.
+Run file:  " ODE_KD.R " 
+
+The code will load the raw data from subfolder "fcs_files" and produce the plots found in the subfolder "plots" and the estimated parameters found in subfolder "parameters". Each script should run in < 5min on a standard desktop computer.
 
 
 R, RStudio versions on which the code has been tested:
@@ -67,7 +69,3 @@ ggplot2_3.3.3
 tidyverse_1.3.1            
 
 
-
-
-Thanks, 
-G.
