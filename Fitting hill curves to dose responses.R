@@ -16,7 +16,6 @@ theme_set(theme_classic() +
                   axis.title = element_text(size = 6), strip.text = element_text(size = 6, color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 
-setwd("C:/Users/noviello/Documents/Paper 2021/Figure 4/Scripts/github modelling")
 out_path='plots'
 
 # calculate background fluorescence of non fluorescent control for background subtraction
@@ -55,8 +54,6 @@ Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -m
 Norm_Singlets_MyFlowSet<- transform(Norm_Singlets_MyFlowSet1, transformList('PE-A' ,Transf))
 medianexp<- as.data.frame(fsApply(Norm_Singlets_MyFlowSet1, each_col, median))
 medianexp<-medianexp[, c(7:8)]
-library(extrafont)
-library(tidyverse)
 medianexp %>% rownames_to_column()->medianexp
 medianexp %>% separate(1, c( "plasmid", "guide", "dTAG", NA), sep = "_") ->medianexp
 medianexp %>% separate(3, into = c(NA, "dTAG"), 
@@ -95,8 +92,6 @@ Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -m
 Norm_Singlets_MyFlowSet2<- transform(Norm_Singlets_MyFlowSet2, transformList('PE-A' ,Transf))
 medianexp<- as.data.frame(fsApply(Norm_Singlets_MyFlowSet2, each_col, median))
 medianexp<-medianexp[, c(7:8)]
-library(extrafont)
-library(tidyverse)
 medianexp %>% rownames_to_column()->medianexp
 medianexp %>% separate(1, c( "plasmid", "guide", "dTAG", NA), sep = "_") ->medianexp
 medianexp %>% separate(3, into = c(NA, "dTAG"), 
@@ -136,8 +131,6 @@ Transf<-linearTransform(transformationId="defaultLinearTransform", a = 1, b = -m
 Norm_Singlets_MyFlowSet3<- transform(Norm_Singlets_MyFlowSet3, transformList('PE-A' ,Transf))
 medianexp<- as.data.frame(fsApply(Norm_Singlets_MyFlowSet3, each_col, median))
 medianexp<-medianexp[, c(7:8)]
-library(extrafont)
-library(tidyverse)
 medianexp %>% rownames_to_column()->medianexp
 medianexp %>% separate(1, c( "plasmid", "guide", "dTAG", NA), sep = "_") ->medianexp
 medianexp %>% separate(3, into = c(NA, "dTAG"), 

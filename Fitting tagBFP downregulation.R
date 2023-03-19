@@ -100,12 +100,12 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP430A.D<-fit
-half.time=data.frame(plasmid = 'SP430A', halftime = coef(fit))
+half.time=data.frame(plasmid = 'SP430A', halftime = coef(fit), se = coef(summary(fit))[2])
 
 p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
   geom_point(size=.4, alpha=0.7, color="#4DBBD5FF") +# adding connecting lines
-  coord_cartesian(y=c(-0.15,1.2))+
+  coord_cartesian(y=c(-0.15,1.4))+
   scale_y_continuous(breaks=(c(0,.25,.5,.75,1)))+
   labs(x= "Time (hours)" , y = "tagBFP (% of final)")+
   scale_color_npg()+
@@ -126,12 +126,12 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP430.D<-fit
-half.time=rbind(half.time,data.frame(plasmid = 'SP430', halftime = coef(fit)))
+half.time=rbind(half.time,data.frame(plasmid = 'SP430', halftime = coef(fit), se = coef(summary(fit))[2]))
 
 p<-ggplot(REVSP430,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
   geom_point(size=.4, alpha=0.7, color="#4DBBD5FF") +# adding connecting lines
-  coord_cartesian(y=c(-0.15,1.2))+
+  coord_cartesian(y=c(-0.15,1.4))+
   scale_y_continuous(breaks=(c(0,.25,.5,.75,1)))+
   labs(x= "Time (hours)" , y = "tagBFP (% of final)")+
   scale_color_npg()+
@@ -153,12 +153,12 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP428.D<-fit
-half.time=rbind(half.time,data.frame(plasmid = 'SP428', halftime = coef(fit)))
+half.time=rbind(half.time,data.frame(plasmid = 'SP428', halftime = coef(fit), se = coef(summary(fit))[2]))
 
 p<-ggplot(REVSP428,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
   geom_point(size=.4, alpha=0.7, color="#4DBBD5FF") +# adding connecting lines
-  coord_cartesian(y=c(-0.15,1.2))+
+  coord_cartesian(y=c(-0.15,1.4))+
   scale_y_continuous(breaks=(c(0,.25,.5,.75,1)))+
   labs(x= "Time (hours)" , y = "tagBFP (% of final)")+
   scale_color_npg()+
@@ -180,12 +180,12 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP427.D<-fit
-half.time=rbind(half.time,data.frame(plasmid = 'SP427', halftime = coef(fit)))
+half.time=rbind(half.time,data.frame(plasmid = 'SP427', halftime = coef(fit), se = coef(summary(fit))[2]))
 
 p<-ggplot(REVSP427,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
   geom_point(size=.4, alpha=0.7, color="#4DBBD5FF") +# adding connecting lines
-  coord_cartesian(y=c(-0.15,1.2))+
+  coord_cartesian(y=c(-0.15,1.4))+
   scale_y_continuous(breaks=(c(0,.25,.5,.75,1)))+
   labs(x= "Time (hours)" , y = "tagBFP (% of final)")+
   scale_color_npg()+
@@ -207,12 +207,12 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
 coef(fit)[1]
 summary(fit)
 SP411.D<-fit
-half.time=rbind(half.time,data.frame(plasmid = 'SP411', halftime = coef(fit)))
+half.time=rbind(half.time,data.frame(plasmid = 'SP411', halftime = coef(fit), se = coef(summary(fit))[2]))
 
 p<-ggplot(REVSP411,aes(time,norm.bfp))+
   stat_function(fun=function(time){exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
   geom_point(size=.4, alpha=0.7, color="#4DBBD5FF") +# adding connecting lines
-  coord_cartesian(y=c(-0.15,1.2))+
+  coord_cartesian(y=c(-0.15,1.4))+
   scale_y_continuous(breaks=(c(0,.25,.5,.75,1)))+
   labs(x= "Time (hours)" , y = "tagBFP (% of final)")+
   scale_color_npg()+

@@ -114,8 +114,8 @@ write_csv(data.frame(alpha),file='parameters/alphamcherry.csv')
 
 # Loading parameters estimated from tBFP time courses and dose-response curves
 dplyr::rename->rename
-t_down = read.csv('parameters/half_times_downregulation.csv')%>% rename(t_down=halftime)
-t_up = read.csv('parameters/half_times_upregulation.csv') %>% rename(t_up=halftime)
+t_down = read.csv('parameters/half_times_downregulation.csv') %>% select(-se)%>% rename(t_down=halftime)
+t_up = read.csv('parameters/half_times_upregulation.csv') %>% select(-se) %>% rename(t_up=halftime)
 hill_pars = read.csv('parameters/Hill_parameters.csv') 
 alpha = read.csv('parameters/alphamcherry.csv')
 all_par = t_down %>% left_join(t_up) %>% left_join(hill_pars) %>%merge(alpha)
@@ -123,6 +123,7 @@ all_par = t_down %>% left_join(t_up) %>% left_join(hill_pars) %>%merge(alpha)
 #Now we simulate the ODE model for CasRx
 
 REV %>% filter(plasmid=="SP411")->REVSP411
+sel_par = all_par %>% filter(plasmid=='SP411')
 mean(REVSP411$norm.bfp[REVSP411$time==0])->R
 mean(REVSP411$fc.cherry[REVSP411$time==0])->Y
 
@@ -136,7 +137,6 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-sel_par = all_par %>% filter(plasmid=='SP411')
 parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 time <- seq(0, 150, by = 0.01)
@@ -145,6 +145,7 @@ out411[,3]*sel_par$alpha->out411[,3]
 
 #Now we simulate the model for dCas9
 REV %>% filter(plasmid=="SP430")->REVSP430
+sel_par = all_par %>% filter(plasmid=='SP430')
 mean(REVSP430$norm.bfp[REVSP430$time==0])->R
 mean(REVSP430$fc.cherry[REVSP430$time==0])->Y
 
@@ -157,7 +158,6 @@ ode1<- function(t, state, parameters) {
   }
   )
 }
-sel_par = all_par %>% filter(plasmid=='SP430')
 parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 
@@ -187,6 +187,7 @@ ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, path=out_path)
 
 #Now we simulate the model for KRAB-Split-dCas9
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
+sel_par = all_par %>% filter(plasmid=='SP430A')
 mean(REVSP430ABA$norm.bfp[REVSP430ABA$time==0])->R
 mean(REVSP430ABA$fc.cherry[REVSP430ABA$time==0])->Y
 state<-c(R=1, Y=Y/sel_par$alpha)
@@ -199,7 +200,6 @@ ode1<- function(t, state, parameters) {
   )
 } 
 
-sel_par = all_par %>% filter(plasmid=='SP430A')
 parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 time <- seq(0, 150, by = 0.01)
@@ -231,7 +231,7 @@ ggsave("REV_tagBFP_KRAB-Split-dCas9_Hill.pdf", fix, path=out_path)
 
 #Now we simulate the model for KRAB-dCas9
 REV %>% filter(plasmid=="SP428")->REVSP428
-
+sel_par = all_par %>% filter(plasmid=='SP428')
 mean(REVSP428$norm.bfp[REVSP428$time==0])->R
 mean(REVSP428$fc.cherry[REVSP428$time==0])->Y
 state<-c(R=1, Y=Y/sel_par$alpha)
@@ -243,7 +243,6 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-sel_par = all_par %>% filter(plasmid=='SP428')
 parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 time <- seq(0, 150, by = 0.01)
@@ -272,7 +271,7 @@ ggsave("REV_tagBFP_dCas9_Hill.pdf", fix, path=out_path)
 
 #Now we simulate the model for HDAC4-dCas9
 REV %>% filter(plasmid=="SP427")->REVSP427
-
+sel_par = all_par %>% filter(plasmid=='SP427')
 mean(REVSP427$norm.bfp[REVSP427$time==0])->R
 mean(REVSP427$fc.cherry[REVSP427$time==0])->Y
 state<-c(R=1, Y=Y/sel_par$alpha)
@@ -285,7 +284,6 @@ ode1<- function(t, state, parameters) {
   )
 } 
 
-sel_par = all_par %>% filter(plasmid=='SP427')
 parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 time <- seq(0, 150, by = 0.01)
@@ -316,7 +314,7 @@ ggsave("REV_tagBFP_HDAC4-dCas9_Hill.pdf", fix, path=out_path)
 
 #for Krab-Split-dCas9:
 REV %>% filter(plasmid=="SP430ABA")->REVSP430ABA
-
+sel_par = all_par %>% filter(plasmid=='SP430A')
 mean(REVSP430ABA$norm.bfp[REVSP430ABA$time==0])->R
 mean(REVSP430ABA$fc.cherry[REVSP430ABA$time==0])->Y
 state<-c(R=R, Y=Y/sel_par$alpha)
@@ -329,7 +327,6 @@ ode1<- function(t, state, parameters) {
   )
 } 
 
-sel_par = all_par %>% filter(plasmid=='SP430A')
 parameters = c(t1.2=sel_par$t_down, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 
@@ -451,7 +448,7 @@ del.427 %>% mutate(res=m.fc-Y)->del.427
 del.427 %>% group_by(t) %>% 
   summarize(N=sum(!is.na(res), na.rm=T),MAE=sum(abs(res), na.rm=T)/(N-1))->sum.res.427
 min(sum.res.427$MAE)
-sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)]
+sum.res.427$t[sum.res.427$MAE==min(sum.res.427$MAE)] ->d427
 #6h
 delaysREV<-rbind(delaysREV,data.frame(plasmid="SP427", d_rev=d427))
 
@@ -493,7 +490,7 @@ del.430 %>% mutate(res=m.fc-Y)->del.430
 del.430 %>% group_by(t) %>% 
   summarize(N=sum(!is.na(res), na.rm=T),MAE=(sum(abs(res), na.rm=T))/(N-1))->sum.res.430
 min(sum.res.430$MAE)
-sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)]
+sum.res.430$t[sum.res.430$MAE==min(sum.res.430$MAE)] ->d430
 
 #0h
 delaysREV<-rbind(delaysREV,data.frame(plasmid="SP430", d_rev=d430))
@@ -665,7 +662,7 @@ ggsave("REV_tagBFP_KRAB-dCas9_18.5h_delay.pdf", fix, path=out_path)
 
 
 
-p<-ggplot(REVSP430ABA,aes(time,norm.BFP))+
+p<-ggplot(REVSP430ABA,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +
   coord_cartesian(x=c(0,150),y=c(0,1.3))+
   labs(x= "Time (hours)" , y = "")+

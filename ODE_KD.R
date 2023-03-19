@@ -14,11 +14,11 @@ library(deSolve)
 
 #set theme
 theme_set(theme_classic() +
-            theme(legend.text = element_text(size = 6, family = "Arial"), panel.border = element_rect(color = "black", fill = NA, size = 0.5),
-                  axis.line = element_blank(), axis.text = element_text(size = 6, family = "Arial", color= "black"),
+            theme(legend.text = element_text(size = 6), panel.border = element_rect(color = "black", fill = NA, size = 0.5),
+                  axis.line = element_blank(), axis.text = element_text(size = 6, color= "black"),
                   axis.text.x = element_text(vjust = 0.5, color= "black"),
                   axis.text.y = element_text(vjust = 0.5, color= "black"),
-                  axis.title = element_text(size = 6, family = "Arial"), strip.text = element_text(size = 6, family = "Arial", color= "black"),
+                  axis.title = element_text(size = 6), strip.text = element_text(size = 6, color= "black"),
                   strip.background = element_blank(), legend.title = element_blank()))
 out_path='plots'
 
@@ -67,7 +67,6 @@ medianexp %>% rownames_to_column()->medianexp
 medianexp %>% separate(1, c( NA, NA, "plasmid", "exp", "rep", "time", NA, NA), sep = "_") ->medianexp
 medianexp$time<-as.numeric(medianexp$time)
 medianexp$plasmid<-as.factor(medianexp$plasmid)
-medianexp %>% group_by(plasmid) %>% fct_relevel(plasmid, levels=c("SP430", "SP428", "SP430ABA", "SP427", "SP411"))
 
 medianexp %>% dplyr::filter (exp == "KD" )->KD
 KD %>% dplyr::filter(time==0)->KD0
@@ -94,8 +93,8 @@ KD$plasmid<-factor(KD$plasmid, levels= c("SP430", "SP428", "SP430ABA", "SP427", 
 #load parameters
 
 dplyr::rename->rename
-t_down = read.csv('parameters/half_times_downregulation.csv')%>% rename(t_down=halftime)
-t_up = read.csv('parameters/half_times_upregulation.csv') %>% rename(t_up=halftime)
+t_down = read.csv('parameters/half_times_downregulation.csv') %>% select(-se) %>% rename(t_down=halftime)
+t_up = read.csv('parameters/half_times_upregulation.csv') %>% select(-se) %>% rename(t_up=halftime)
 hill_pars = read.csv('parameters/Hill_parameters.csv') 
 alpha = read.csv('parameters/alphamcherry.csv')
 all_par = t_down %>% left_join(t_up) %>% left_join(hill_pars) %>%merge(alpha)
@@ -165,7 +164,7 @@ p<-ggplot(data=sum.res.430ABA, aes(x=t, y=MAE))+
   scale_fill_npg()+
   geom_line(data=sum.res.430ABA, aes(y=min(MAE)), lty=2)
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_KD_KRAB-Split-dCas9_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_KD_KRAB-Split-dCas9_mcherry.pdf", fix, path=out_path)
 
 #simulate again with delay found (6h)
 state<-c(R=0, Y=1/sel_par$alpha)
@@ -180,7 +179,7 @@ ode1<- function(t, state, parameters) {
 parameters = c(beta= log(2)/(sel_par$t_up),t1.2=sel_par$t_up, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 
-time <- seq(0+6, 150+6, by = 0.01)
+time <- seq(0+d430a, 150+d430a, by = 0.01)
 out430ABAd <- ode(y=state,times=time, func=ode1, parms=parameters)
 out430ABAd[,3]*sel_par$alpha->out430ABAd[,3]
 
@@ -194,7 +193,7 @@ p<-ggplot(KDSP430ABA,aes(time,fc.cherry))+
   geom_line(data=data.frame(out430ABA), aes(time, Y))+
   geom_line(data=data.frame(out430ABAd), aes(time, Y), lty=2)
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("mCherry_KRAB-Split-dCas9.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_mCherry_KRAB-Split-dCas9.pdf", fix, path=out_path)
 
 p<-ggplot(KDSP430ABA,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +# adding connecting lines
@@ -204,11 +203,12 @@ p<-ggplot(KDSP430ABA,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430ABA), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("tagBFP_KRAB-Split-dCas9.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_tagBFP_KRAB-Split-dCas9.pdf", fix, path=out_path)
 
 
 #Same for HDAC4-dCas9
 KD %>% filter(plasmid=="SP427")->KDSP427
+sel_par = all_par %>% filter(plasmid=='SP427')
 state<-c(R=0, Y=1/sel_par$alpha)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
@@ -218,7 +218,7 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-sel_par = all_par %>% filter(plasmid=='SP427')
+
 parameters = c(beta= log(2)/(sel_par$t_up),t1.2=sel_par$t_up, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 
@@ -258,7 +258,7 @@ p<-ggplot(data=sum.res.427, aes(x=t, y=MAE))+
   geom_line(data=sum.res.427, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_KD_HDAC4-dCas9_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_KD_HDAC4-dCas9_mcherry.pdf", fix, path=out_path)
 
 p<-ggplot(KDSP427,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +# adding connecting lines
@@ -268,7 +268,7 @@ p<-ggplot(KDSP427,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out427), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("mCherry_HDAC4_dCas9.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_mCherry_HDAC4_dCas9.pdf", fix, path=out_path)
 
 p<-ggplot(KDSP427,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +# adding connecting lines
@@ -278,10 +278,11 @@ p<-ggplot(KDSP427,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out427), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("tagBFP_HDAC4-dCas9.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_tagBFP_HDAC4-dCas9.pdf", fix, path=out_path)
 
 #Same for KRAB-dCas9
 KD %>% filter(plasmid=="SP428")->KDSP428
+sel_par = all_par %>% filter(plasmid=='SP428')
 state<-c(R=0, Y=1/sel_par$alpha)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
@@ -291,7 +292,7 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-sel_par = all_par %>% filter(plasmid=='SP428')
+
 parameters = c(beta= log(2)/(sel_par$t_up),t1.2=sel_par$t_up, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 
@@ -331,7 +332,7 @@ p<-ggplot(data=sum.res.428, aes(x=t, y=MAE))+
   geom_line(data=sum.res.428, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_KD_KRAB-dCas9_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_KD_KRAB-dCas9_mcherry.pdf", fix, path=out_path)
 
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
@@ -345,7 +346,7 @@ ode1<- function(t, state, parameters) {
 parameters = c(beta= log(2)/(sel_par$t_up),t1.2=sel_par$t_up, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 
-time <- seq(0+3, 150+3, by = 0.01)
+time <- seq(0+d428, 150+d428, by = 0.01)
 out428d <- ode(y=state,times=time, func=ode1, parms=parameters)
 out428d[,3]*sel_par$alpha->out428d[,3]
 
@@ -358,7 +359,7 @@ p<-ggplot(KDSP428,aes(time,fc.cherry))+
   geom_line(data=data.frame(out428), aes(time, Y))+
   geom_line(data=data.frame(out428d), aes(time, Y), lty=2)
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("mCherry_KRAB-dCas9.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_mCherry_KRAB-dCas9.pdf", fix, path=out_path)
 
 p<-ggplot(KDSP428,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +# adding connecting lines
@@ -369,10 +370,11 @@ p<-ggplot(KDSP428,aes(time,norm.bfp))+
   geom_line(data=data.frame(out428), aes(time, R))
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("tagBFP_KRAB-dCas9.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_tagBFP_KRAB-dCas9.pdf", fix, path=out_path)
 
 #Same for CasRx
 KD %>% filter(plasmid=="SP411")->KDSP411
+sel_par = all_par %>% filter(plasmid=='SP411')
 state<-c(R=0, Y=1/sel_par$alpha)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
@@ -382,7 +384,7 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-sel_par = all_par %>% filter(plasmid=='SP411')
+
 parameters = c(beta= log(2)/(sel_par$t_up),t1.2=sel_par$t_up, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 
@@ -422,7 +424,7 @@ p<-ggplot(data=sum.res.411, aes(x=t, y=MAE))+
   geom_line(data=sum.res.411, aes(y=min(MAE)), lty=2)
 
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_KD_CasRx_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_KD_CasRx_mcherry.pdf", fix, path=out_path)
 
 p<-ggplot(KDSP411,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +# adding connecting lines
@@ -432,7 +434,7 @@ p<-ggplot(KDSP411,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out411), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("mCherry_CasRx.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_mCherry_CasRx.pdf", fix, path=out_path)
 
 p<-ggplot(KDSP411,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +# adding connecting lines
@@ -442,10 +444,11 @@ p<-ggplot(KDSP411,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out411), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("tagBFP_CasRx.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_tagBFP_CasRx.pdf", fix, path=out_path)
 
 #Same for dCas9
 KD %>% filter(plasmid=="SP430")->KDSP430
+sel_par = all_par %>% filter(plasmid=='SP430')
 state<-c(R=0, Y=1/sel_par$alpha)
 ode1<- function(t, state, parameters) {
   with(as.list(c(state, parameters)),{
@@ -455,7 +458,7 @@ ode1<- function(t, state, parameters) {
   }
   )
 } 
-sel_par = all_par %>% filter(plasmid=='SP430')
+
 parameters = c(beta= log(2)/(sel_par$t_up),t1.2=sel_par$t_up, K=sel_par$K, n=sel_par$n, alpha=sel_par$alpha)
 
 
@@ -493,7 +496,7 @@ p<-ggplot(data=sum.res.430, aes(x=t, y=MAE))+
   scale_fill_npg()+
   geom_line(data=sum.res.430, aes(y=min(MAE)), lty=2)
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("MAE_KD_dCas9_mcherry.pdf", fix, device=cairo_pdf)
+ggsave("MAE_KD_dCas9_mcherry.pdf", fix, path=out_path)
 
 p<-ggplot(KDSP430,aes(time,fc.cherry))+
   geom_point(size=.8, alpha=0.4, color="#E64B35FF") +# adding connecting lines
@@ -503,7 +506,7 @@ p<-ggplot(KDSP430,aes(time,fc.cherry))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430), aes(time, Y))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("mCherry_dCas9.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_mCherry_dCas9.pdf", fix, path=out_path)
 
 p<-ggplot(KDSP430,aes(time,norm.bfp))+
   geom_point(size=.8, alpha=0.4, color="#4DBBD5FF") +# adding connecting lines
@@ -513,7 +516,7 @@ p<-ggplot(KDSP430,aes(time,norm.bfp))+
   scale_fill_npg()+
   geom_line(data=data.frame(out430), aes(time, R))
 fix <- set_panel_size(p, width = unit(1.5*1.618, "cm"), height = unit(1.5, "cm"))
-ggsave("tagBFP_dCas9.pdf", fix, device=cairo_pdf)
+ggsave("KD_ODE_tagBFP_dCas9.pdf", fix, path=out_path)
 
 write_csv(delaysKD,file='parameters/delays_repression.csv')
 

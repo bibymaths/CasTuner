@@ -73,7 +73,6 @@ KD$plasmid<-factor(KD$plasmid, levels= c("SP430", "SP428", "SP430ABA", "SP427", 
 
 #min-max scaling of bfp between time 0 (min) and time >10h (max)
 medianexp$plasmid<-as.factor(medianexp$plasmid)
-medianexp %>% group_by(plasmid) %>% fct_relevel(plasmid, levels=c("SP430", "SP428", "SP430ABA", "SP427", "SP411"))
 medianexp %>% dplyr::filter (exp == "KD" )->KD
 KD %>% group_by(plasmid) %>% filter(time>10) %>% 
   summarize(mean.final=mean((`BV421-A`)))->mean.final
@@ -99,7 +98,7 @@ KDSP430ABA$norm.bfp ->y
 fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 SP430A.U<-fit
-half.time=data.frame(plasmid = 'SP430A', halftime = coef(fit))
+half.time=data.frame(plasmid = 'SP430A', halftime = coef(fit), se = coef(summary(fit))[2])
 
 p<-ggplot(KDSP430ABA,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -122,7 +121,7 @@ KDSP430$norm.bfp ->y
 fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 SP430.U<-fit
-half.time=rbind(half.time,data.frame(plasmid = 'SP430', halftime = coef(fit)))
+half.time=rbind(half.time,data.frame(plasmid = 'SP430', halftime = coef(fit), se = coef(summary(fit))[2]))
 
 p<-ggplot(KDSP430,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -146,7 +145,7 @@ KDSP428$norm.bfp ->y
 fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 SP428.U<-fit
-half.time=rbind(half.time,data.frame(plasmid = 'SP428', halftime = coef(fit)))
+half.time=rbind(half.time,data.frame(plasmid = 'SP428', halftime = coef(fit), se = coef(summary(fit))[2]))
 
 p<-ggplot(KDSP428,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -170,7 +169,7 @@ KDSP427$norm.bfp ->y
 fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 SP427.U<-fit
-half.time=rbind(half.time,data.frame(plasmid = 'SP427', halftime = coef(fit)))
+half.time=rbind(half.time,data.frame(plasmid = 'SP427', halftime = coef(fit), se = coef(summary(fit))[2]))
 
 p<-ggplot(KDSP427,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
@@ -194,7 +193,7 @@ fit<-nls(y ~ yf + (y0 - yf) * exp(-t*(log(2)/t1.2)),
          start = list(t1.2 = 0.8))
 
 SP411.U<-fit
-half.time=rbind(half.time,data.frame(plasmid = 'SP411', halftime = coef(fit)))
+half.time=rbind(half.time,data.frame(plasmid = 'SP411', halftime = coef(fit), se = coef(summary(fit))[2]))
 
 p<-ggplot(KDSP411,aes(time,norm.bfp))+
   stat_function(fun=function(time){1-exp(-time*(log(2)/coef(fit)[[1]]))}, color="black")+
