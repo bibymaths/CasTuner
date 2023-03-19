@@ -36,17 +36,16 @@ The code will load the raw data from subfolder "fcs_files" and produce the plots
 
 
 R, RStudio versions on which the code has been tested:
+
 R version 3.6.3 (2020-02-29)
 Platform: x86_64-w64-mingw32/x64 (64-bit)
 Running under: Windows 10 x64 (build 19045)
 
-Matrix products: default
+R version 4.2.1 (2022-06-23)
+Platform: x86_64-apple-darwin17.0     
+Running under: macOS 12.5    
 
-Packages:
-attached base packages:
-parallel  stats4    stats     graphics  grDevices utils     datasets  methods   base     
-
-other attached packages:
+### Required packages
 deSolve_1.30                
 nlstools_2.0-0                         
 wesanderson_0.3.6           
