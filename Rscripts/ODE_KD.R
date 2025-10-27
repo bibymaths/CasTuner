@@ -41,7 +41,7 @@ mBFP_neg<-mean(medianexp[c(1:3), 7])
 mmCherry_neg<-mean(medianexp[c(1:3), 8])
 
 #load time-course data
-MyFlowSet <- read.flowSet(path="fcs_files/time-course_data", min.limit=0.01)
+MyFlowSet <- read.flowSet(path= "CasTuner-Python/fcs_files/time-course_data", min.limit=0.01)
 chnl <- c("FSC-A", "SSC-A") #are the channels to build the gate on
 bou_g <- openCyto:::.boundary(MyFlowSet[[3]], channels = chnl, min = c(0.4e5, 0.20e5), max=c(2e5,1.3e5), filterId = "Boundary Gate")
 p <- autoplot(MyFlowSet[[3]], x = chnl[1], y = chnl[2], bins=100)

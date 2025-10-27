@@ -1,0 +1,39 @@
+[build-system]
+# Specifies the build system (setuptools is a standard, safe default)
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# --- Core Project Metadata ---
+# This is for your private version of the project
+name = "CasTuner-Python"
+version = "0.1.0"
+description = "A private Python port of the CasTuner R code for modeling gene expression dynamics."
+readme = "README.md"
+requires-python = ">=3.9"
+
+# --- Author ---
+authors = [
+    { name = "Abhinav Mishra", email = "mishraabhinav36@gmail.com" },
+]
+
+# --- License ---
+# Since the original has no license, this project is also unlicensed
+# and should be kept private. This entry is for documentation.
+license = { text = "Proprietary - Based on unlicensed original research code" }
+
+
+# --- Dependencies ---
+# These are the packages that `uv` or `pip` will install
+dependencies = [
+    "pandas",
+    "numpy",
+    "scipy",
+    "plotnine",
+    "FlowCytometryTools",
+    "flowio",
+    "flowutils",
+    "palettable",
+    "scikit-learn"
+]
+
