@@ -22,10 +22,6 @@ dependencies = [
     "scipy",
     "plotnine",
     "FlowCytometryTools",
-    "flowio",
-    "flowutils",
-    "palettable",
-    "scikit-learn"
 ]
 
 [project.urls]
@@ -33,7 +29,6 @@ Original-Repository = "https://github.com/EddaSchulz/CasTuner"
 
 [tool.setuptools]
 py-modules = [
-    "utils",
     "step_1a_fit_upregulation",
     "step_1b_fit_downregulation",
     "step_1c_fit_hill_curves",

@@ -3,6 +3,3 @@ numpy
 scipy
 plotnine
 FlowCytometryTools
-flowio
-flowutils
-palettable
