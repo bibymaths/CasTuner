@@ -1,14 +1,12 @@
 [build-system]
-# Specifies the build system (setuptools is a standard, safe default)
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 # --- Core Project Metadata ---
-# This is for your private version of the project
-name = "CasTuner-Python"
+name = "CasTuner-Python-Port"
 version = "0.1.0"
-description = "A private Python port of the CasTuner R code for modeling gene expression dynamics."
+description = "Private Python port of the CasTuner R code for modeling gene expression dynamics."
 readme = "README.md"
 requires-python = ">=3.9"
 
@@ -17,14 +15,11 @@ authors = [
     { name = "Abhinav Mishra", email = "mishraabhinav36@gmail.com" },
 ]
 
-# --- License ---
-# Since the original has no license, this project is also unlicensed
-# and should be kept private. This entry is for documentation.
-license = { text = "Proprietary - Based on unlicensed original research code" }
-
+# --- License (PEP 621-compliant) ---
+# Use a LICENSE file if you have one; otherwise keep the text field.
+license = { text = "Proprietary" }
 
 # --- Dependencies ---
-# These are the packages that `uv` or `pip` will install
 dependencies = [
     "pandas",
     "numpy",
@@ -37,3 +32,17 @@ dependencies = [
     "scikit-learn"
 ]
 
+[project.urls]
+Original-Repository = "https://github.com/EddaSchulz/CasTuner"
+
+# --- Setuptools configuration ---
+# Keep the distribution to these top-level .py files (no packages).
+[tool.setuptools]
+py-modules = [
+    "utils",
+    "step_1a_fit_upregulation",
+    "step_1b_fit_downregulation",
+    "step_1c_fit_hill_curves",
+    "step_2_simulate_derepression",
+    "step_3_simulate_repression"
+]

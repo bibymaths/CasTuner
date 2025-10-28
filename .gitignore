@@ -1,0 +1,90 @@
+# =====================
+# Python build artifacts
+# =====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dll
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+MANIFEST
+
+# =====================
+# Virtual environments
+# =====================
+.env
+.venv
+env/
+venv/
+ENV/
+.ipynb_checkpoints/
+
+# =====================
+# IDE / Editor
+# =====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*~
+
+# =====================
+# Jupyter / Notebooks
+# =====================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# =====================
+# Logs / Datasets / Plots
+# =====================
+logs/
+*.log
+plots/
+*.png
+*.pdf
+*.svg
+*.eps
+
+# =====================
+# Temporary / Data / Outputs
+# =====================
+*.tmp
+*.temp
+*.dat
+*.csv
+*.tsv
+*.xlsx
+*.xls
+fcs_files/
+data/
+results/
+outputs/
+
+# =====================
+# OS-specific
+# =====================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =====================
+# Custom project notes / experiments
+# =====================
+scratch/
+notebooks/
+old_scripts/
+Rscripts/
