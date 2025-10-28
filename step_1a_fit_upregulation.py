@@ -1,133 +1,314 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Fit Hill functions to dTAG-13 dose–response curves of the reporter–repressor.
+
+Python dependencies:
+  - FlowCytometryTools
+  - flowio, flowutils
+  - numpy, pandas, scipy
+  - plotnine
+
+Directory layout expected (same as R script):
+  fcs_files/
+    NFC/
+      *.fcs
+    dose_response_data/
+      R1/*.fcs
+      R2/*.fcs
+      R3/*.fcs
+
+Outputs:
+  plots/Hill_dCas9.pdf
+  plots/Hill_CasRx.pdf
+  plots/Hill-HDAC4-dCas9.pdf
+  plots/Hill-KRAB-dCas9.pdf
+  plots/Hill-KRAB-Split-dCas9.pdf
+  parameters/Hill_parameters.csv
+"""
+
 import os
+import re
+import glob
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
+from FlowCytometryTools import FCMeasurement
 from plotnine import (
-    ggplot,
-    aes,
-    geom_point,
-    geom_line,
-    labs,
-    scale_y_continuous,
-)
-from utils import (
-    load_nfc_background,
-    load_fcs_data,
-    theme_castuner,
-    color_bfp
+    ggplot, aes, geom_point, geom_line, labs,
+    scale_y_continuous, coord_cartesian, theme_classic
 )
 
-# Optional: define or replace with your actual mapping
-plasmid_map = {}  # e.g., {"pX": "Plasmid_X"}
+# ----------------------------
+# Config & small utilities
+# ----------------------------
+OUT_PATH = "plots"
+PARAM_PATH = "parameters"
+os.makedirs(OUT_PATH, exist_ok=True)
+os.makedirs(PARAM_PATH, exist_ok=True)
 
-# Exponential rise-to-max from 0 to 1 with half-time t1/2
-def exp_fit_up(t, t1_2):
-    yf, y0 = 1.0, 0.0
-    return yf + (y0 - yf) * np.exp(-t * (np.log(2) / t1_2))
+# Channel names (as in the R code)
+CH_FSC_A = "FSC-A"
+CH_SSC_A = "SSC-A"
+CH_FSC_H = "FSC-H"
+CH_BFP   = "BV421-A"  # reporter (BFP)
+CH_mCh   = "PE-A"     # reporter (mCherry)
 
+# Boundary gate ranges (same numeric limits as R script)
+BOUND_MIN = {CH_FSC_A: 0.4e5, CH_SSC_A: 0.20e5}
+BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}
+
+# Singlet gate mimic (FSC-H ~ FSC-A)
+SINGLET_RATIO_LOW  = 0.85
+SINGLET_RATIO_HIGH = 1.15
+
+# dTAG mapping from filename token to numeric concentration
+DTAG_MAP = {
+    "1": 0, "2": 0.5, "3": 1, "4": 2, "5": 3, "6": 5,
+    "7": 8, "8": 10, "9": 25, "10": 50, "11": 100, "12": 500
+}
+
+# Plot sizes (inches) ~ R set_panel_size: width = 1.5*1.618, height = 1.5
+PLOT_W = 1.5 * 1.618
+PLOT_H = 1.5
+
+# Theme mimic
+def theme_castuner_like():
+    return theme_classic()
+
+# ----------------------------
+# Gating helpers
+# ----------------------------
+def apply_boundary_gate(df: pd.DataFrame) -> pd.DataFrame:
+    """Rectangular gate on FSC-A / SSC-A."""
+    m = (
+        (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
+        (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
+    )
+    return df.loc[m]
+
+def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
+    """Singlet gate approximation via FSC-H ≈ FSC-A."""
+    ratio = df[CH_FSC_H] / (df[CH_FSC_A].replace(0, np.nan))
+    m = (ratio >= SINGLET_RATIO_LOW) & (ratio <= SINGLET_RATIO_HIGH)
+    return df.loc[m]
+
+def median_channels_for_file(fpath: str) -> pd.Series:
+    """Load one FCS file and return medians of all channels after gating."""
+    sample = FCMeasurement(ID=os.path.basename(fpath), datafile=fpath).data
+    # Drop missing columns gracefully
+    for ch in (CH_FSC_A, CH_SSC_A, CH_FSC_H, CH_BFP, CH_mCh):
+        if ch not in sample.columns:
+            raise ValueError(f"Channel '{ch}' not found in: {fpath}")
+
+    gated = apply_boundary_gate(sample)
+    if len(gated) == 0:
+        gated = sample  # fallback if gate is too strict
+
+    singlets = apply_singlet_gate(gated)
+    if len(singlets) == 0:
+        singlets = gated  # fallback
+
+    return singlets.median(numeric_only=True)
+
+def load_flowset_medians(folder: str) -> pd.DataFrame:
+    """Load all FCS files in a folder and compute medians after gating."""
+    files = sorted(glob.glob(os.path.join(folder, "*.fcs")))
+    if not files:
+        raise FileNotFoundError(f"No FCS files found in: {folder}")
+    rows = []
+    for f in files:
+        med = median_channels_for_file(f)
+        med["__filename"] = os.path.splitext(os.path.basename(f))[0]
+        rows.append(med)
+    return pd.DataFrame(rows)
+
+# ----------------------------
+# Background subtraction (NFC)
+# ----------------------------
+def compute_nfc_background(nfc_dir: str):
+    df = load_flowset_medians(nfc_dir)
+    # R code used mean of first 3 rows for both channels
+    mBFP_neg = df.iloc[:3][CH_BFP].mean()
+    mmCherry_neg = df.iloc[:3][CH_mCh].mean()
+    return float(mBFP_neg), float(mmCherry_neg)
+
+# ----------------------------
+# Dose-response replicate processing
+# ----------------------------
+FILENAME_SPLIT_RE = re.compile(r"_")
+
+def parse_filename_tokens(name: str):
+    """
+    R split logic:
+      rowname -> separate into plasmid, guide, dTAG, NA
+      then split dTAG token into letters + number (we keep the numeric part).
+    Expected pattern: <plasmid>_<guide>_<dTAG><index>_...
+    Example: 430_G_dTAG3_...
+    """
+    parts = FILENAME_SPLIT_RE.split(name)
+    # defensive defaults
+    plasmid = parts[0] if len(parts) > 0 else ""
+    guide = parts[1] if len(parts) > 1 else ""
+    dtag_token = parts[2] if len(parts) > 2 else ""
+
+    # extract trailing digits from the dTAG token
+    m = re.search(r"([A-Za-z]+)(\d+)$", dtag_token)
+    dtag_idx = m.group(2) if m else dtag_token
+    return plasmid, guide, dtag_idx
+
+def load_replicate(folder: str, mBFP_neg: float, mmCherry_neg: float) -> pd.DataFrame:
+    """
+    Load replicate folder, subtract background, compute medians,
+    and parse filename into columns: plasmid, guide, dTAG (numeric).
+    """
+    raw = load_flowset_medians(folder)
+
+    # Background subtraction (linear transform)
+    raw[CH_BFP] = raw[CH_BFP] - mBFP_neg
+    raw[CH_mCh] = raw[CH_mCh] - mmCherry_neg
+
+    # Keep only BFP and mCherry columns (positions 7:8 in R, but safer by names)
+    df = raw[[CH_BFP, CH_mCh, "__filename"]].copy()
+
+    # Parse filename pieces
+    parsed = df["__filename"].apply(parse_filename_tokens).tolist()
+    parsed_df = pd.DataFrame(parsed, columns=["plasmid", "guide", "dTAG_token"])
+    df = pd.concat([df, parsed_df], axis=1)
+
+    # Map dTAG token to numeric concentration
+    df["dTAG"] = df["dTAG_token"].map(DTAG_MAP).astype(float)
+    df = df.drop(columns=["__filename", "dTAG_token"])
+    return df.rename(columns={CH_BFP: f"{CH_BFP}", CH_mCh: f"{CH_mCh}"})
+
+# ----------------------------
+# Hill model fitting
+# ----------------------------
+def hill_func(R, K, n):
+    # y = K^n / (K^n + R^n)  (R: normalized repressor level)
+    return (K**n) / (K**n + np.power(R, n))
+
+def fit_hill(R_vals, y_vals, start=(0.1, 1.0)):
+    # Ensure arrays
+    R_vals = np.asarray(R_vals, dtype=float)
+    y_vals = np.asarray(y_vals, dtype=float)
+    # clean NaNs/Infs
+    m = np.isfinite(R_vals) & np.isfinite(y_vals)
+    R_vals = R_vals[m]
+    y_vals = y_vals[m]
+    if len(R_vals) < 3:
+        raise RuntimeError("Not enough points for Hill fit.")
+
+    # positive bounds for K and n
+    popt, pcov = curve_fit(hill_func, R_vals, y_vals,
+                           p0=[0.1, 1.0], maxfev=20000)
+    return popt, pcov
+
+def save_hill_plot(df, fit_params, out_pdf):
+    K, n = fit_params
+    # Build smooth curve across observed R
+    tmin, tmax = float(df["norm.bfp"].min()), float(df["norm.bfp"].max())
+    curve = pd.DataFrame({"norm.bfp": np.linspace(tmin, tmax, 200)})
+    curve["fc_fit"] = hill_func(curve["norm.bfp"], K, n)
+
+    p = (
+        ggplot(df, aes("norm.bfp", "fc"))
+        + geom_point(size=0.8, alpha=0.4)
+        + geom_line(data=curve, mapping=aes(x="norm.bfp", y="fc_fit"))
+        + coord_cartesian(ylim=(0, 1))
+        + labs(x="Normalized repressor level", y="Normalized reporter level")
+        + scale_y_continuous()
+        + theme_castuner_like()
+    )
+    p.save(os.path.join(OUT_PATH, out_pdf), width=PLOT_W, height=PLOT_H, units="in")
+
+# ----------------------------
+# Main flow (mirrors R)
+# ----------------------------
 def main():
-    OUT_PATH = "plots"
-    PARAM_PATH = "parameters"
-    os.makedirs(OUT_PATH, exist_ok=True)
-    os.makedirs(PARAM_PATH, exist_ok=True)
+    # 1) NFC background
+    mBFP_neg, mmCherry_neg = compute_nfc_background("fcs_files/NFC")
 
-    # Load background controls
-    mBFP_neg, mmCherry_neg = load_nfc_background()
+    # 2) Replicates R1..R3 with background subtraction & parsing
+    rep1 = load_replicate("fcs_files/dose_response_data/R1", mBFP_neg, mmCherry_neg)
+    rep2 = load_replicate("fcs_files/dose_response_data/R2", mBFP_neg, mmCherry_neg)
+    rep3 = load_replicate("fcs_files/dose_response_data/R3", mBFP_neg, mmCherry_neg)
 
-    # Load time-course data (expects directory to exist)
-    medianexp = load_fcs_data("fcs_files/time-course_data", mBFP_neg, mmCherry_neg)
+    rep1 = rep1.assign(rep=1, day=4)
+    rep2 = rep2.assign(rep=2, day=4)
+    rep3 = rep3.assign(rep=3, day=4)
 
-    # Parse filenames: format: _ _ plasmid _ exp _ rep _ time _ _
-    parts = medianexp["filename"].str.split("_", expand=True)
-    medianexp["plasmid"] = parts[2]
-    medianexp["exp"] = parts[3]
-    medianexp["time"] = pd.to_numeric(parts[5], errors="coerce")
+    d4 = pd.concat([rep1, rep2, rep3], ignore_index=True)
 
-    # Keep only KD (upregulation) experiment rows with valid time
-    KD = medianexp[(medianexp["exp"] == "KD") & (~medianexp["time"].isna())].copy()
+    # 3) Factor/ordering (optional in Python)
+    # levels = ["430", "428", "430ABA", "427", "411"]
 
-    # Min-max scale tagBFP (BV421-A) per plasmid using early and late time windows
-    mean_final = (
-        KD[KD["time"] > 10]
-        .groupby("plasmid")["BV421-A"]
+    # meanNTC from NTC (guide == 'N')
+    meanNTC = (
+        d4.query("guide == 'N'")
+        .groupby(['plasmid', 'dTAG'])[CH_mCh]
         .mean()
-        .reset_index(name="mean_final")
+        .rename('meanNTC')
+        .reset_index()
     )
-    mean_init = (
-        KD[KD["time"] == 0]
-        .groupby("plasmid")["BV421-A"]
-        .mean()
-        .reset_index(name="mean_init")
+
+    # join by (plasmid, dTAG) and compute fc
+    d4 = d4.merge(meanNTC, on=['plasmid', 'dTAG'], how='left')
+    d4['fc'] = d4[CH_mCh] / d4['meanNTC']
+
+    # 6) fc.bfp and norm.bfp
+    # max.bfp at dTAG==0 per (plasmid, guide)
+    max_bfp = (d4.query("dTAG == 0")
+               .groupby(['plasmid', 'guide'])[CH_BFP]
+               .mean().rename('max.bfp').reset_index())
+    d4 = d4.merge(max_bfp, on=['plasmid', 'guide'], how='left')
+    d4['fc.bfp'] = d4[CH_BFP] / d4['max.bfp']
+
+    # norm.bfp: min–max per (plasmid, guide)
+    d4['norm.bfp'] = (
+        d4.groupby(['plasmid', 'guide'], group_keys=False)[CH_BFP]
+        .apply(lambda v: (v - v.min()) / (v.max() - v.min()) if v.max() > v.min() else 0.0)
     )
-    KD = KD.merge(mean_final, on="plasmid", how="left").merge(mean_init, on="plasmid", how="left")
 
-    # Avoid div-by-zero; if mean_final == mean_init, set denom to NaN (row dropped by fitting)
-    denom = (KD["mean_final"] - KD["mean_init"]).replace(0, np.nan)
-    KD["norm.bfp"] = (KD["BV421-A"] - KD["mean_init"]) / denom
+    # 7) Filter targeting guides (guide == 'G')
+    d4g = d4.query("guide == 'G'").copy()
 
-    plasmids = KD["plasmid"].dropna().unique()
-    half_times = []
+    # 8) Fit per plasmid and plot
+    records = []
+    targets = [
+        ("430",    "Hill_dCas9.pdf",             "SP430"),
+        ("411",    "Hill_CasRx.pdf",             "SP411"),
+        ("427",    "Hill-HDAC4-dCas9.pdf",       "SP427"),
+        ("428",    "Hill-KRAB-dCas9.pdf",        "SP428"),
+        ("430ABA", "Hill-KRAB-Split-dCas9.pdf",  "SP430A"),
+    ]
 
-    for plasmid in plasmids:
-        data = KD[(KD["plasmid"] == plasmid) & (~KD["norm.bfp"].isna())]
-        if data.empty:
-            print(f"Skipping {plasmid}: no valid normalized points.")
+    for plasmid, pdfname, label in targets:
+        subset = d4g[d4g["plasmid"] == plasmid].copy()
+        if subset.empty:
+            print(f"[WARN] No data for plasmid {plasmid}, skipping.")
             continue
 
-        # Fit exponential rise (initial guess t1/2 ~ 0.8 hours as in your script)
+        R_vals = subset["norm.bfp"]
+        y_vals = subset["fc"]
+
         try:
-            popt, pcov = curve_fit(
-                exp_fit_up,
-                data["time"].to_numpy(dtype=float),
-                data["norm.bfp"].to_numpy(dtype=float),
-                p0=[0.8],
-                bounds=(0, np.inf),
-                maxfev=10000,
-            )
-            t1_2 = float(popt[0])
-            se = float(np.sqrt(np.diag(pcov))[0]) if pcov.size else np.nan
+            (K, n), pcov = fit_hill(R_vals, y_vals, start=(0.1, 1.0))
+            print(f"Summary {label}: K={K:.4g}, n={n:.4g}")
+            records.append({"plasmid": label, "K": K, "n": n})
 
-            # Optional name mapping for output consistency
-            param_plasmid_name = plasmid_map.get(plasmid, plasmid)
-            half_times.append({"plasmid": param_plasmid_name, "halftime": t1_2, "se": se})
-
-            # Build a smooth curve (replacement for geom_function/stat_function)
-            t_min = float(data["time"].min())
-            t_max = float(data["time"].max())
-            curve_df = pd.DataFrame({"time": np.linspace(t_min, t_max, 200)})
-            curve_df["norm_bfp"] = exp_fit_up(curve_df["time"], t1_2)
-
-            # Plot points + fitted curve
-            p = (
-                ggplot(data, aes("time", "norm.bfp"))
-                + geom_point(size=0.4, alpha=0.7, color=color_bfp)
-                + geom_line(
-                    data=curve_df,
-                    mapping=aes(x="time", y="norm_bfp"),
-                    color="black",
-                )
-                + labs(x="Time (hours)", y="tagBFP (% of final)")
-                + scale_y_continuous(breaks=[0, 0.25, 0.5, 0.75, 1], limits=[-0.15, 1.2])
-                + theme_castuner()
-            )
-            p.save(
-                os.path.join(OUT_PATH, f"KD_{plasmid}_fitting.pdf"),
-                width=1.5 * 1.618,
-                height=1.5,
-                units="in",
-            )
-
-        except RuntimeError:
-            print(f"Could not fit {plasmid}")
+            save_hill_plot(subset, (K, n), pdfname)
         except Exception as e:
-            print(f"Error fitting {plasmid}: {e}")
+            print(f"[ERROR] Fit failed for {label}: {e}")
 
-    # Save estimated half-times
-    half_time_df = pd.DataFrame(half_times)
-    half_time_df.to_csv(os.path.join(PARAM_PATH, "half_times_upregulation.csv"), index=False)
-    print("Step 1a: Upregulation fitting complete.")
-    if not half_time_df.empty:
-        print(half_time_df)
+    # 9) Save parameters
+    if records:
+        params_df = pd.DataFrame.from_records(records, columns=["plasmid", "K", "n"])
+        params_df.to_csv(os.path.join(PARAM_PATH, "Hill_parameters.csv"), index=False)
+        print(params_df)
+    else:
+        print("[WARN] No parameters estimated; no CSV written.")
 
 if __name__ == "__main__":
     main()

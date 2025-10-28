@@ -3,26 +3,22 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-# --- Core Project Metadata ---
 name = "CasTuner-Python-Port"
 version = "0.1.0"
 description = "Private Python port of the CasTuner R code for modeling gene expression dynamics."
 readme = "README.md"
-requires-python = ">=3.9"
+# Critical: keep FlowCytometryTools happy
+requires-python = ">=3.9,<3.10"
 
-# --- Author ---
 authors = [
     { name = "Abhinav Mishra", email = "mishraabhinav36@gmail.com" },
 ]
 
-# --- License (PEP 621-compliant) ---
-# Use a LICENSE file if you have one; otherwise keep the text field.
 license = { text = "Proprietary" }
 
-# --- Dependencies ---
 dependencies = [
     "pandas",
-    "numpy",
+    "numpy==1.26.4",
     "scipy",
     "plotnine",
     "FlowCytometryTools",
@@ -35,8 +31,6 @@ dependencies = [
 [project.urls]
 Original-Repository = "https://github.com/EddaSchulz/CasTuner"
 
-# --- Setuptools configuration ---
-# Keep the distribution to these top-level .py files (no packages).
 [tool.setuptools]
 py-modules = [
     "utils",
