@@ -24,6 +24,7 @@ MANIFEST
 # =====================
 # Virtual environments
 # =====================
+*.lock
 .env
 .venv
 env/
