@@ -7,7 +7,7 @@ name = "CasTuner-Python-Port"
 version = "0.1.0"
 description = "Private Python port of the CasTuner R code for modeling gene expression dynamics."
 readme = "README.md"
-requires-python = ">=3.9,<3.10"
+requires-python = ">=3.11,<3.13"
 
 authors = [
     { name = "Abhinav Mishra", email = "mishraabhinav36@gmail.com" },
