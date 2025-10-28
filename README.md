@@ -1,70 +1,139 @@
 # CasTuner
 
-Code associated with the manuscript 
+## Modelling of repression and derepression dynamics in CRISPR/Cas-based analog gene tuning systems
 
-## CasTuner: a degron and CRISPR/Cas-based toolkit for analog tuning of endogenous gene expression
-#### Gemma Noviello, Rutger A. F. Gjaltema and Edda G. Schulz  
+This repository contains the **Python implementation** of all computational steps associated with the manuscript:
 
-This repository contains code and data for modelling of repression and derepression dynamics of CasTuner systems
+> **CasTuner: a degron and CRISPR/Cas-based toolkit for analog tuning of endogenous gene expression**
+> Gemma Noviello, Rutger A. F. Gjaltema, and Edda G. Schulz
 
+The Python version reproduces the kinetic modelling and ODE simulations originally implemented in R, maintaining identical data flow, parameter inference, and figure generation.
+All components—data, scripts, configuration, and workflow—are fully accessible within this repository.
 
-To execute this code, run the following R files with the order below.
-The raw data are also provided in locations specified in each R file.
+---
 
+## 1. Structure and Execution
 
-Step 1a.
-Estimate the dynamic of upregulation of Cas-Repressors upon dTAG-13 withdrawal.
-Run file: " Fitting tagBFP upregulation.R  "
+### Workflow overview
 
-Step 1b.
-Estimate the dynamic of degradation of Cas-Repressors upon dTAG-13 addition
-Run file: " Fitting tagBFP downregulation.R  "
+| Step | Description                                                                                            | Script                            |
+| ---- | ------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| 1a   | Estimate upregulation dynamics of Cas-repressors after dTAG-13 withdrawal                              | `step_1a_fit_upregulation.py`     |
+| 1b   | Estimate degradation dynamics of Cas-repressors after dTAG-13 addition                                 | `step_1b_fit_downregulation.py`   |
+| 1c   | Fit steady-state Hill parameters for dose–response relationships                                       | `step_1c_fit_hill_curves.py`      |
+| 2    | Simulate derepression ODE models, estimate mCherry degradation rate (α), and infer derepression delays | `step_2_simulate_derepression.py` |
+| 3    | Simulate repression ODE models and infer repression delays                                             | `step_3_simulate_repression.py`   |
 
-Step 1c. 
-Fit the parameters of the dose-response relationship between repressors and target gene at the steady-state (assumed to be day 4 of titration: data corresponding to Supplementary Fig. 3e)
-Run file:  " Fitting hill curves to dose responses.R " 
+Each script reads raw flow-cytometry data from `fcs_files/`, performs parameter estimation, and produces results in:
 
-Step 2.
-Simulate ODE model using computed parameters from previous steps, to predict the dynamic of mCherry derepression by each repressor system. This script also estimates the Cherry degradation rate from CasRx time-course. The script then tests whether there is a derepression delay by comparing experimental and simulated data.
-Run file:  " ODE_REV.R" 
+* `parameters/` – numerical parameter estimates (`.csv`)
+* `plots/` – generated figures (`.pdf`)
 
-Step 3.
-Simulate ODE model using computed parameters from previous steps, to predict the dynamic of mCherry repression by each repressor system. The script then tests whether there is a repression delay by comparing experimental and simulated data.
-Run file:  " ODE_KD.R " 
+Typical runtime: < 5 minutes per step on a standard desktop system.
 
-The code will load the raw data from subfolder "fcs_files" and produce the plots found in the subfolder "plots" and the estimated parameters found in subfolder "parameters". Each script should run in < 5min on a standard desktop computer.
+---
 
+## 2. Automated Orchestration
 
-R, RStudio versions on which the code has been tested:
+All steps are orchestrated via **Snakemake** using the included `Snakefile` and `config.yaml`.
 
-R version 3.6.3 (2020-02-29)
-Platform: x86_64-w64-mingw32/x64 (64-bit)
-Running under: Windows 10 x64 (build 19045)
+### Run the complete workflow
 
-R version 4.2.1 (2022-06-23)
-Platform: x86_64-apple-darwin17.0     
-Running under: macOS 12.5    
+```bash
+snakemake -j 4
+```
 
-### Required packages
-deSolve_1.30                
-nlstools_2.0-0                         
-wesanderson_0.3.6           
-ggsci_2.9                  
-ggridges_0.5.3              
-RColorBrewer_1.1-2          
-ggcyto_1.14.1               
-flowWorkspace_3.34.1        
-ncdfFlow_2.32.0            
-openCyto_1.24.0             
-flowCore_1.52.1             
-extrafont_0.17             
-nlme_3.1-152                
-minpack.lm_1.2-1                                                 
-egg_0.4.5                   
-gridExtra_2.3                                           
-dplyr_1.0.8                                                   
-tidyr_1.1.3                
-ggplot2_3.3.3               
-tidyverse_1.3.1            
+### Inspect dependency graph
 
+```bash
+snakemake --dag | dot -Tpdf > dag.pdf
+```
 
+Snakemake ensures the sequential execution:
+
+1. Upregulation fitting
+2. Downregulation fitting
+3. Hill-curve fitting
+4. Derepression simulation
+5. Repression simulation
+
+Results are written automatically to `parameters/` and `plots/`.
+
+---
+
+## 3. Environment and Dependencies
+
+The project is defined through `pyproject.toml` (for uv) and `requirements.txt` (for pip users).
+
+### Create the environment (uv)
+
+```bash
+uv venv
+uv pip install -r requirements.txt
+```
+
+or equivalently:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Primary dependencies:**
+
+* `pandas`, `numpy`, `scipy`
+* `FlowCytometryTools`, `flowio`, `flowutils`
+* `plotnine`
+* `snakemake>=8.0.0`
+
+---
+
+## 4. Configuration
+
+All user-defined paths and parameters are centralized in [`config.yaml`](./config.yaml).
+Modify it to adjust input folders, output paths, or computational options.
+
+---
+
+## 5. Data Access
+
+Expected directory layout:
+
+```
+CasTuner/
+├── fcs_files/
+│   ├── NFC/                    # Non-fluorescent control
+│   └── time-course_data/       # Experimental flow cytometry data
+├── parameters/                 # Fitted parameter CSVs
+├── plots/                      # Output figures
+├── Snakefile
+├── config.yaml
+├── pyproject.toml
+├── requirements.txt
+└── step_*.py                   # Analysis scripts
+```
+
+---
+
+## 6. Reproducibility
+
+All numerical steps are deterministic and self-contained:
+
+* ODE integration: `scipy.integrate.odeint` / `solve_ivp`
+* Parameter fitting: `scipy.optimize.curve_fit`
+* Plotting: `plotnine`
+* Workflow control: `Snakemake`
+
+Results can be regenerated in full from raw `.fcs` data using only the provided scripts and configuration.
+
+---
+
+## 7. Citation
+
+If this code or workflow contributes to your research, please cite:
+
+> **CasTuner: a degron and CRISPR/Cas-based toolkit for analog tuning of endogenous gene expression**
+> Gemma Noviello, Rutger A. F. Gjaltema, and Edda G. Schulz
+
+---

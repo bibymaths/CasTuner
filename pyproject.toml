@@ -7,7 +7,6 @@ name = "CasTuner-Python-Port"
 version = "0.1.0"
 description = "Private Python port of the CasTuner R code for modeling gene expression dynamics."
 readme = "README.md"
-# Critical: keep FlowCytometryTools happy
 requires-python = ">=3.9,<3.10"
 
 authors = [
@@ -17,6 +16,8 @@ authors = [
 license = { text = "Proprietary" }
 
 dependencies = [
+    "snakemake",
+    "pulp<=2.7.0",
     "pandas",
     "numpy==1.26.4",
     "scipy",

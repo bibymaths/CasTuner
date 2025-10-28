@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
 from scipy.integrate import odeint
+from scipy.interpolate import PchipInterpolator
 from FlowCytometryTools import FCMeasurement
 from plotnine import (
     ggplot, aes, geom_point, geom_line, labs, coord_cartesian,
@@ -238,12 +239,12 @@ def rhs(y, t, t_down, K, n, alpha):
     denom = Kn + Rn + 1e-15
 
     dR = -Rpos * (np.log(2) / t_down)
-    dY = (Kn / denom) - alpha * Y
+    dY = (Kn)/(Kn + Rn) - Y * alpha
     return [dR, dY]
 
 
 def simulate_ode(R0: float, Y0: float, pars: pd.Series,
-                 t0: float = 0.0, tmax: float = 150.0, step: float = 0.01,
+                 t0: float = 0.0, tmax: float = 150.0, step: float = 0.05,
                  delay: float = 0.0) -> pd.DataFrame:
     """
     Return a DataFrame with columns: time, R, Y.
@@ -257,10 +258,10 @@ def simulate_ode(R0: float, Y0: float, pars: pd.Series,
         y0,
         t_eval,
         args=(pars["t_down"], pars["K"], pars["n"], pars["alpha"]),
-        atol=1e-8,
-        rtol=1e-5,
-        hmax=0.5,
-        mxstep=10000
+        atol=1e-10,
+        rtol=1e-9,
+        # hmax=0.5,
+        # mxstep=10000
     )
 
     R = np.maximum(sol[:, 0], 0.0)
@@ -276,26 +277,49 @@ def simulate_ode(R0: float, Y0: float, pars: pd.Series,
 # ----------------------------
 # Delay scan MAE vs mean(fc.cherry by time)
 # ----------------------------
-def delay_scan(pl_df: pd.DataFrame, pars: dict, tmax=150.0, step=0.01):
-    mean_fc = pl_df.groupby("time")["fc.cherry"].mean().rename("m.fc").reset_index()
+def delay_scan(pl_df: pd.DataFrame, pars: dict, tmax=150.0, step=0.005):
+    mean_fc = (pl_df.groupby("time")["fc.cherry"]
+               .mean().rename("m_fc").reset_index().sort_values("time"))
     delays = np.arange(0.0, 25.0 + 1e-9, 0.5)
     rows = []
-    best = (None, np.inf, None)  # (delay, mae, sim_df)
+    best = (None, np.inf, None)
 
     R0 = float(pl_df.loc[pl_df["time"] == 0, "norm.bfp"].mean())
     Y0 = float(pl_df.loc[pl_df["time"] == 0, "fc.cherry"].mean())
 
+    # t_end = mean_fc["time"].max()
+    sim = simulate_ode(R0, Y0, pars, tmax=tmax, step=step)
+
+    # monotone interpolator on Y vs time
+    pchipY = PchipInterpolator(sim["time"].to_numpy(), sim["Y"].to_numpy(), extrapolate=False)
+
     for d in delays:
-        sim_df = simulate_ode(R0, Y0, pars, tmax=tmax, step=step, delay=d)
-        merged = pd.merge(sim_df, mean_fc, on="time", how="left")
-        merged["res"] = merged["m.fc"] - merged["Y"]
-        subset = merged.dropna(subset=["res"])
-        if len(subset) <= 1:
+        sel = mean_fc["time"] >= d
+        if not np.any(sel):
             continue
-        mae = subset["res"].abs().sum() / (len(subset) - 1)
+        t_data = mean_fc.loc[sel, "time"].to_numpy()
+
+        # evaluate only within support; mask out those beyond sim range
+        t_query = t_data - d
+        in_dom  = (t_query >= sim["time"].iloc[0]) & (t_query <= sim["time"].iloc[-1])
+        if not np.any(in_dom):
+            continue
+
+        y_pred = np.full_like(t_query, np.nan, dtype=float)
+        y_pred[in_dom] = pchipY(t_query[in_dom])
+
+        df_cmp = pd.DataFrame({"time": t_data, "m_fc": mean_fc.loc[sel, "m_fc"].to_numpy(), "Y": y_pred})
+        df_cmp = df_cmp.dropna(subset=["Y"])
+        N = len(df_cmp)
+        if N <= 1:
+            continue
+        mae = (df_cmp["m_fc"] - df_cmp["Y"]).abs().sum() / (N - 1)
         rows.append({"t": d, "MAE": mae})
+
         if mae < best[1]:
-            best = (d, mae, sim_df)
+            shifted = sim.copy()
+            shifted["time"] = shifted["time"] + d
+            best = (d, mae, shifted)
 
     mae_df = pd.DataFrame(rows)
     return mae_df, best[0], best[1], best[2]

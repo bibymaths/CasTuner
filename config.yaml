@@ -1,0 +1,5 @@
+paths:
+  nfc_dir: "fcs_files/NFC"
+  timecourse_dir: "fcs_files/time-course_data"
+  parameters: "parameters"
+  plots: "plots"
