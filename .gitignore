@@ -73,6 +73,7 @@ fcs_files/
 data/
 results/
 outputs/
+parameters/
 
 # =====================
 # OS-specific
