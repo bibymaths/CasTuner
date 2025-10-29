@@ -10,9 +10,6 @@ __pycache__/
 
 # Byte-compiled / optimized / DLL files
 *.pyc
-*.pyo
-*.pyd
-
 # Distribution / packaging
 build/
 dist/
@@ -45,7 +42,6 @@ ENV/
 # =====================
 # Jupyter / Notebooks
 # =====================
-.ipynb_checkpoints/
 *.ipynb_checkpoints
 
 # =====================
