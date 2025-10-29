@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "CasTuner-Python-Port"
 version = "0.1.0"
-description = "Private Python port of the CasTuner R code for modeling gene expression dynamics."
+description = "Python port of the CasTuner R code for modeling gene expression dynamics."
 readme = "README.md"
 requires-python = "==3.9.*"
 

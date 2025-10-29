@@ -17,6 +17,7 @@ dist/
 .eggs/
 *.egg
 MANIFEST
+.snakemake/
 
 # =====================
 # Virtual environments
