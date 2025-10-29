@@ -51,13 +51,15 @@ snakemake --dag | dot -Tpdf > dag.pdf
 
 Execution order:
 
-1. Upregulation fitting
-2. Downregulation fitting
-3. Hill-curve fitting
-4. Derepression ODE simulation
-5. Repression ODE simulation
+1. Upregulation fitting  
+2. Downregulation fitting  
+3. Hill-curve fitting  
+4. Derepression ODE simulation  
+5. Repression ODE simulation  
 
-All results are automatically written to `parameters/` and `plots/`.
+The entire Snakemake pipeline executes in approximately **1 minute** on a standard desktop (4 cores), 
+automatically reproducing all figures and parameter tables in a single run.
+All results are written to `parameters/` and `plots/`.
 
 ---
 
