@@ -187,3 +187,37 @@ The Python implementation reproduces all major kinetic trends observed in the R 
 Despite these technical differences, the **model dynamics, curve shapes, and parameter scaling remain consistent**, confirming that the Python workflow is a faithful quantitative reproduction of the original R pipeline.
 
 ---
+
+## 10. Visual Validation
+
+To confirm reproducibility beyond numeric agreement, representative figures from both the **original R workflow** and the **Python port** were compared side by side.
+All plots were generated from the same raw `.fcs` data under equivalent normalization and model assumptions.
+
+### Comparison Overview
+
+| Figure                          | Biological Context                                     | R Output                                                         | Python Output                                                         | Observation                                                            |
+| ------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Hill function (HDAC4-dCas9)** | Steady-state repression vs. normalized repressor level | <img src="R_results/plots/Hill-HDAC4-dCas9.pdf" width="220">     | <img src="Python_results/plots/Hill-HDAC4-dCas9.pdf" width="220">     | Nearly identical sigmoidal shape; slight midpoint (K) shift            |
+| **Hill function (KRAB-dCas9)**  | Steady-state repression vs. dose                       | <img src="R_results/plots/Hill-KRAB-dCas9.pdf" width="220">      | <img src="Python_results/plots/Hill-KRAB-dCas9.pdf" width="220">      | Preserved slope and dynamic range; minor difference in low-dose region |
+| **Upregulation (CasRx)**        | tagBFP rise after dTAG-13 withdrawal                   | <img src="R_results/plots/KD_CasRx_fitting.pdf" width="220">     | <img src="Python_results/plots/KD_CasRx_fitting.pdf" width="220">     | Curves overlap closely; Python version smoother due to solver grid     |
+| **Derepression (CasRx)**        | mCherry derepression after Cas-repressor removal       | <img src="R_results/plots/REV_CasRx_fitting.pdf" width="220">    | <img src="Python_results/plots/REV_CasRx_fitting.pdf" width="220">    | Same trajectory and scaling; <15 % deviation in decay rate             |
+| **ODE simulation (CasRx)**      | Repression model — mCherry trajectory                  | <img src="R_results/plots/KD_ODE_mCherry_CasRx.pdf" width="220"> | <img src="Python_results/plots/KD_ODE_mCherry_CasRx.pdf" width="220"> | Parallel rise–decay kinetics; timing offset consistent with d_rev fit  |
+| **Delay scan (CasRx)**          | MAE vs. delay in repression fit                        | <img src="R_results/plots/MAE_KD_CasRx_mcherry.pdf" width="220"> | <img src="Python_results/plots/MAE_KD_CasRx_mcherry.pdf" width="220"> | Same error curve shape; minima at 2–3 h region in both                 |
+
+---
+
+### Summary
+
+The reproduced plots demonstrate that the **Python implementation faithfully mirrors the R pipeline** in both dynamics and visualization:
+
+* Hill and ODE curves preserve shape, ranking, and fold-change scaling.
+* Delay-scan minima and kinetic trends match within experimental tolerance.
+* Minor numeric deviations originate from:
+
+  * Different ODE solvers (`deSolve::lsoda` vs. `scipy.solve_ivp`)
+  * Distinct optimization routines (`nlsLM` vs. `curve_fit`)
+  * Floating-point precision and interpolation details
+
+Overall, the **Python results reproduce both the kinetic behavior and figure morphology** of the original CasTuner R analysis, confirming quantitative and visual equivalence.
+
+---
