@@ -71,6 +71,12 @@ results/
 outputs/
 parameters/
 
+# Explicitly track comparison figures for README visual validation
+!R_results/
+!R_results/**
+!Python_results/
+!Python_results/**
+
 # =====================
 # OS-specific
 # =====================
