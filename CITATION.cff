@@ -36,7 +36,7 @@ preferred-citation:
   authors:
     - family-names: "Mishra"
       given-names: "Abhinav"
-  url: "https://github.com/bibymaths/CasTuner-python"
+  url: "https://github.com/bibymaths/CasTuner"
   date-released: 2025-10-29
   license: MIT
 
