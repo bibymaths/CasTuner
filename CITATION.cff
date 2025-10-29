@@ -1,0 +1,55 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it and the original CasTuner article as below."
+title: "CasTuner (Python Port): Reproducible modelling of repression/derepression dynamics"
+version: "0.1.0"
+date-released: 2025-10-29
+license: MIT
+url: "https://github.com/bibymaths/CasTuner"
+repository-code: "https://github.com/bibymaths/CasTuner"
+abstract: >
+  Independent Python reimplementation of the CasTuner analysis pipeline:
+  flow-cytometry preprocessing, kinetic parameter estimation (half-times, Hill curves),
+  and ODE-based simulations for CRISPR/Cas-based analog gene tuning. The workflow
+  preserves the R logic and adds Snakemake-based orchestration for end-to-end reproducibility.
+
+keywords:
+  - CRISPR
+  - Cas
+  - degron
+  - analog gene tuning
+  - flow cytometry
+  - ODE modelling
+  - kinetic parameters
+  - Hill function
+  - Snakemake
+  - reproducible research
+  - Python
+
+authors:
+  - family-names: "Mishra"
+    given-names: "Abhinav"
+
+preferred-citation:
+  type: software
+  title: "CasTuner (Python Port): Reproducible modelling of repression/derepression dynamics"
+  version: "0.1.0"
+  authors:
+    - family-names: "Mishra"
+      given-names: "Abhinav"
+  url: "https://github.com/bibymaths/CasTuner-python"
+  date-released: 2025-10-29
+  license: MIT
+
+references:
+  - type: article
+    title: "CasTuner: a degron and CRISPR/Cas-based toolkit for analog tuning of endogenous gene expression"
+    authors:
+      - family-names: "Noviello"
+        given-names: "Gemma"
+      - family-names: "Gjaltema"
+        given-names: "Rutger A. F."
+      - family-names: "Schulz"
+        given-names: "Edda G."
+    notes: >
+      Original CasTuner article associated with the R workflow on which this Python
+      port is based. Please cite alongside the software when appropriate.

@@ -147,6 +147,14 @@ And optionally acknowledge:
 
 ---
 
+### License
+
+This repository is released under the [MIT License](./LICENSE).
+
+The implementation is an independent Python port inspired by the
+CasTuner R workflow by Noviello, Gjaltema, and Schulz (2021),
+but contains entirely new code developed by Abhinav Mishra.
+
 ## 8. Development Notes
 
 This Python implementation was independently developed by **Abhinav Mishra** as part of a prospective extension to the CasTuner project.
