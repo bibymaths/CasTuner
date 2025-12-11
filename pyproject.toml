@@ -23,6 +23,7 @@ dependencies = [
     "scipy",
     "plotnine",
     "FlowCytometryTools",
+    "pandoc>=2.4",
 ]
 
 [project.urls]

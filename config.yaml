@@ -3,3 +3,4 @@ paths:
   timecourse_dir: "fcs_files/time-course_data"
   parameters: "parameters"
   plots: "plots"
+  scripts: "scripts"
