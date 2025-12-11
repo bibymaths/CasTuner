@@ -1,29 +1,26 @@
 #!/usr/bin/env python
 """
 step_5_visualize_noise_and_kinetics.py
+------------------------------------
 
-Summarize CasTuner kinetics + single-cell noise.
+Generates plots:
+  1. Noise vs mean plots (BFP / mCherry) – empirical time-series
+  2. Hill K vs n
+  3. Up vs down half-times
+  4. Repression vs derepression delays
+  5. Hierarchical noise summary (per plasmid / channel / experiment)
+  6. Noise vs kinetic parameters (design-guided view)
+  7. Time series summaries (mean ± SE) per plasmid
+  8. Goodness-of-fit between empirical and hierarchical noise
 
-Inputs (from Python_results/parameters):
-- Hill_parameters.csv
-- half_times_upregulation.csv
-- half_times_downregulation.csv
-- alphamcherry.csv
-- delays_derepression.csv
-- delays_repression.csv
-- design_space_scan_repression.csv   # currently not used, but loaded for completeness
-- single_cell_noise_timeseries.csv
-- single_cell_noise_hierarchical.csv
-
-Outputs (saved under Python_results/plots/step5_noise_kinetics):
-- Noise vs mean (BFP, mCherry)
-- Hill K vs n + labels
-- Up vs down half-times
-- Delay (repression vs derepression)
-- Noise vs kinetic parameters (mCherry CV² vs K, half-times, delays)
-- Hierarchical CV² summary per plasmid / channel / condition
-- Time-series mean ± SE trajectories for each plasmid (BFP & mCherry)
-- Goodness-of-fit plots: empirical vs hierarchical noise (mean & CV²)
+Requires input CSV files in "parameters/" directory:
+    - Hill_parameters.csv
+    - half_times_upregulation.csv
+    - half_times_downregulation.csv
+    - delays_repression.csv
+    - delays_derepression.csv
+    - single_cell_noise_timeseries.csv
+    - single_cell_noise_hierarchical.csv
 """
 
 import os
@@ -33,13 +30,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
 # ---------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------
-PARAM_PATH  = Path("parameters")
-PLOTS_ROOT  = Path("plots")
-OUT_PATH    = PLOTS_ROOT / "noise_kinetics"
+PARAM_PATH = Path("parameters")
+PLOTS_ROOT = Path("plots")
+OUT_PATH = PLOTS_ROOT / "noise_kinetics"
+
 
 def ensure_outdir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
@@ -74,20 +71,19 @@ def labeled_scatter(ax, x, y, labels, xlabel, ylabel, title):
     ax.set_title(title)
 
 
-
 # ---------------------------------------------------------------------
 # Load all parameter / noise tables
 # ---------------------------------------------------------------------
 def load_tables():
-    hill        = pd.read_csv(PARAM_PATH / "Hill_parameters.csv")              # plasmid, K, n
-    up          = pd.read_csv(PARAM_PATH / "half_times_upregulation.csv")      # plasmid, halftime, se
-    down        = pd.read_csv(PARAM_PATH / "half_times_downregulation.csv")    # plasmid, halftime, se
-    alpha       = pd.read_csv(PARAM_PATH / "alphamcherry.csv")                 # alpha
-    delays_de   = pd.read_csv(PARAM_PATH / "delays_derepression.csv")          # plasmid, d_rev
-    delays_rep  = pd.read_csv(PARAM_PATH / "delays_repression.csv")            # plasmid, d_rev
-    design      = pd.read_csv(PARAM_PATH / "design_space_scan_repression.csv") # not used here
-    noise_ts    = pd.read_csv(PARAM_PATH / "single_cell_noise_timeseries.csv")
-    noise_hier  = pd.read_csv(PARAM_PATH / "single_cell_noise_hierarchical.csv")
+    hill = pd.read_csv(PARAM_PATH / "Hill_parameters.csv")  # plasmid, K, n
+    up = pd.read_csv(PARAM_PATH / "half_times_upregulation.csv")  # plasmid, halftime, se
+    down = pd.read_csv(PARAM_PATH / "half_times_downregulation.csv")  # plasmid, halftime, se
+    alpha = pd.read_csv(PARAM_PATH / "alphamcherry.csv")  # alpha
+    delays_de = pd.read_csv(PARAM_PATH / "delays_derepression.csv")  # plasmid, d_rev
+    delays_rep = pd.read_csv(PARAM_PATH / "delays_repression.csv")  # plasmid, d_rev
+    design = pd.read_csv(PARAM_PATH / "design_space_scan_repression.csv")  # not used here
+    noise_ts = pd.read_csv(PARAM_PATH / "single_cell_noise_timeseries.csv")
+    noise_hier = pd.read_csv(PARAM_PATH / "single_cell_noise_hierarchical.csv")
     return {
         "hill": hill,
         "up": up,
@@ -269,7 +265,7 @@ def plot_noise_hier_summary(noise_hier_long: pd.DataFrame, out_path: Path) -> No
             s = noise_hier_long[
                 (noise_hier_long["channel"] == channel) &
                 (noise_hier_long["exp"] == exp)
-            ]
+                ]
             plt.scatter(
                 s["mean"],
                 s["cv2"],
@@ -545,13 +541,13 @@ def main():
     ensure_outdir(OUT_PATH)
     tables = load_tables()
 
-    hill            = tables["hill"]
-    up              = tables["up"]
-    down            = tables["down"]
-    delays_de       = tables["delays_de"]
-    delays_rep      = tables["delays_rep"]
-    noise_ts        = tables["noise_ts"]
-    noise_hier_raw  = tables["noise_hier_raw"]
+    hill = tables["hill"]
+    up = tables["up"]
+    down = tables["down"]
+    delays_de = tables["delays_de"]
+    delays_rep = tables["delays_rep"]
+    noise_ts = tables["noise_ts"]
+    noise_hier_raw = tables["noise_hier_raw"]
 
     # Build long-format hierarchical noise table once
     noise_hier_long = make_noise_hier_long(noise_hier_raw)

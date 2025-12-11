@@ -4,26 +4,12 @@
 """
 Step 4b – Model-driven design scan for analog gene tuners.
 
-Aim 2 – Model-driven design of analog gene tuners.
-
-This script extends the CasTuner Python port by:
-  • Loading fitted kinetic parameters (t_up, t_down, Hill K/n, alpha, delays) from
-    the existing CSV outputs in 'parameters/'.
-  • Deriving plausible design ranges for each parameter based on the measured
-    constructs (e.g. SP411, SP430A, ...).
-  • Sampling a design space over (K, n, t_up, t_down, delay) and simulating the
-    repression ODE (KD) for each candidate.
-  • Computing design-relevant summary metrics for the reporter trajectory Y(t):
-        - dynamic_range      = max(Y) - min(Y)
-        - t10_90             = time to go from 10% to 90% of total change
-        - t50                = time to 50% of total change
-        - overshoot          = peak deviation relative to late steady-state
-  • Writing a design-space table:
-        parameters/design_space_scan_repression.csv
-
-You can then:
-  • Filter for designs with desired dynamic range + response time.
-  • Overlay noise metrics (from Step 4a) to propose new construct architectures.
+This script performs the following steps:
+1) Loads measured parameter ranges from CSV files.
+2) Samples a design space over key parameters (K, n, t_up, alpha, delay_kd).
+3) Simulates repression dynamics for each sampled design.
+4) Computes design metrics: dynamic range, t10-90, t50, overshoot.
+5) Saves the results to a CSV file.
 """
 
 import os, math, warnings
@@ -38,7 +24,7 @@ warnings.filterwarnings("ignore")
 # BASE_PATH   = "Python_results"
 # PARAM_PATH  = os.path.join(BASE_PATH, "parameters")
 
-PARAM_PATH  = "parameters"
+PARAM_PATH = "parameters"
 os.makedirs(PARAM_PATH, exist_ok=True)
 
 
@@ -92,7 +78,7 @@ def load_measured_parameter_ranges() -> Dict[str, Tuple[float, float]]:
 
     # optional delays
     delay_rev_path = os.path.join(PARAM_PATH, "delays_derepression.csv")
-    delay_kd_path  = os.path.join(PARAM_PATH, "delays_repression.csv")
+    delay_kd_path = os.path.join(PARAM_PATH, "delays_repression.csv")
 
     def _delay_range(path: str, col_name: str) -> Tuple[float, float]:
         if not os.path.exists(path):
@@ -108,7 +94,7 @@ def load_measured_parameter_ranges() -> Dict[str, Tuple[float, float]]:
         return float(vals.min()), float(vals.max())
 
     delay_rev_min, delay_rev_max = _delay_range(delay_rev_path, "d_rev")
-    delay_kd_min, delay_kd_max   = _delay_range(delay_kd_path, "d_rev")
+    delay_kd_min, delay_kd_max = _delay_range(delay_kd_path, "d_rev")
 
     ranges = {
         "K": (float(hills["k"].min()), float(hills["k"].max())),
@@ -171,7 +157,7 @@ def simulate_repression(t_up: float, K: float, n: float, alpha: float,
     -------
     pd.DataFrame with columns: time, R, Y
     """
-    t_eval = np.arange(0.0, t_end + dt/2, dt)
+    t_eval = np.arange(0.0, t_end + dt / 2, dt)
     # Initial condition: R(0)=0, Y(0)=1/alpha → alpha*Y starts at 1 (matching step_3)
     y0 = np.array([0.0, 1.0 / max(alpha, 1e-12)], dtype=float)
 
@@ -188,7 +174,7 @@ def simulate_repression(t_up: float, K: float, n: float, alpha: float,
         raise RuntimeError(f"ODE solver failed: {sol.message}")
 
     R = sol.y[0, :]
-    Y = sol.y[1, :] * alpha   # scale back (Y*alpha)
+    Y = sol.y[1, :] * alpha  # scale back (Y*alpha)
     df = pd.DataFrame({"time": t_eval + delay, "R": R, "Y": Y})
     return df
 
@@ -235,8 +221,8 @@ def compute_design_metrics(ts: pd.DataFrame) -> Dict[str, float]:
             if i == 0:
                 return float(t[0])
             # linear interpolation
-            t1, t2 = t[i-1], t[i]
-            y1, y2 = y[i-1], y[i]
+            t1, t2 = t[i - 1], t[i]
+            y1, y2 = y[i - 1], y[i]
             if y2 == y1:
                 return float(t2)
             return float(t1 + (level - y1) * (t2 - t1) / (y2 - y1))

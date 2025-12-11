@@ -2,29 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-Step 8 – Aggregated report & artifact sweep for CasTuner Python port.
-
-Responsibilities
-----------------
-1. Collect all CSV parameter tables in `parameters/`.
-2. Collect all plots under `plots/` (recursively).
-   - Mirror them into `report/plots/` keeping subfolder structure.
-   - For each PDF, try to create a PNG mirror using ImageMagick `convert`
-     (if available).
-3. Create a single PDF report at `report/CasTuner_summary_report.pdf` that:
-   - Describes the analysis pipeline and main "knobs" (gating, models).
-   - Summarizes key kinetic, Hill, ODE and noise parameters.
-   - Summarizes design-space scan and selected top candidates.
-   - Embeds a few key plots (if their PNG mirrors exist).
-
-Assumptions
------------
-- You run this from the project root (same level as `scripts/`, `parameters/`,
-  `plots/`, `fcs_files/`, etc.).
-- The earlier pipeline steps have been executed, i.e. the CSVs and plots exist.
-- `reportlab` is installed (`uv add reportlab` if needed).
-- ImageMagick `convert` is available for PDF→PNG conversion; otherwise PNG
-  mirroring is gracefully skipped with a warning.
+step_8_generate_report.py
+----------------------------------
+This script compiles an integrated PDF report summarizing the analyses
+performed in the CasTuner Python pipeline. It gathers plots and tables
+from previous steps, mirrors them into a report directory, and generates
+textual summaries of key biological insights derived from the data.
+The final report provides a comprehensive overview of degron–Cas tuner
+performance, kinetic parameters, dose–response characteristics,
+single-cell noise profiles, and model-driven design space exploration.
+----------------------------------
 """
 
 import sys
@@ -32,7 +19,7 @@ import shutil
 import subprocess
 import textwrap
 from pathlib import Path
-from typing import Optional,List
+from typing import Optional, List
 
 import numpy as np
 import pandas as pd
@@ -51,7 +38,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 
-
 # -------------------------------------------------------------------------
 # Paths
 # -------------------------------------------------------------------------
@@ -64,6 +50,7 @@ PLOTS_PATH = PROJECT_ROOT / "plots"
 
 try:
     import yaml  # PyYAML
+
     cfg_path = PROJECT_ROOT / "config.yaml"
     if cfg_path.exists():
         cfg = yaml.safe_load(cfg_path.read_text())
@@ -299,12 +286,12 @@ def summarize_delays(df_de: Optional[pd.DataFrame],
     if not parts:
         return "No delay information was available for derepression or repression."
     return (
-        "The ODE models required an explicit onset delay to align simulations with\n"
-        + "the experimental time courses. "
-        + " ".join(parts)
-        + " These delays capture upstream processes such as degrader uptake, degron\n"
-        + "processing and the time required until the effective nuclear repressor\n"
-        + "concentration begins to change."
+            "The ODE models required an explicit onset delay to align simulations with\n"
+            + "the experimental time courses. "
+            + " ".join(parts)
+            + " These delays capture upstream processes such as degrader uptake, degron\n"
+            + "processing and the time required until the effective nuclear repressor\n"
+            + "concentration begins to change."
     )
 
 
@@ -518,7 +505,7 @@ def add_paragraph(story, text, styles):
 
 
 def add_plot_if_available(
-    story, relative_plot: str, caption: str, styles, width_cm: float = 14.0
+        story, relative_plot: str, caption: str, styles, width_cm: float = 14.0
 ):
     """
     Embed a PNG version of a plot into the report if present in report/plots.

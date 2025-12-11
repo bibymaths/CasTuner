@@ -2,22 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-step_7_design_selection_and_map.py (Robust Version)
-
-Final Meta-Analysis:
-1. Loads the "Design Space" (500 simulated variants).
-2. Loads observed parameters for REAL constructs (SP411, SP430, etc.).
-3. Simulates REAL constructs to place them on the map.
-4. RANKING STRATEGY:
-   Instead of strict cutoffs (which may yield 0 results), we calculate a
-   Performance Score:
-      Score = Dynamic Range / (t50 + 1)
-   (Higher is better: rewards high range and fast response).
-5. Visualizes the map with Top 10 designs highlighted.
-
-Outputs:
-  - plots/design_space_map.pdf
-  - parameters/candidate_selection_top10.csv
+step_7_design_selection_and_map.py
+----------------------------------
+This script analyzes the simulated design space of genetic constructs
+to identify top-performing designs based on dynamic range and response time. It ranks designs using a composite score that favors high dynamic range
+and low response time (t50). The top candidates are visualized in a performance map alongside real experimental constructs for context.
+The final selected designs are saved for further experimental validation.
+----------------------------------
 """
 
 import os

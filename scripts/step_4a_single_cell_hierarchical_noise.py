@@ -4,23 +4,16 @@
 """
 Step 4a – Single-cell noise and hierarchical summaries for CasTuner constructs.
 
-Aim 1 – Quantitative characterization of degron–Cas tuners with uncertainty and noise.
+This script processes single-cell time-course flow cytometry data to compute
+noise metrics (mean, variance, CV²) for BFP and mCherry expression. It applies
+gating identical to prior steps, subtracts NFC background, and summarizes
+noise metrics per (plasmid, experiment, replicate, time) group. Finally, it
+computes hierarchical summaries per construct using a simple normal–normal
+partial pooling approach.
 
-This script extends the CasTuner Python port by:
-  • Loading *single-cell* FCS events (Rev + KD) with the same gating and NFC background
-    logic used in Steps 1–3.
-  • Computing per-(plasmid, exp, rep, time) noise metrics:
-        - mean, variance, CV² for tagBFP (repressor proxy) and mCherry (reporter)
-        - number of cells contributing
-  • Aggregating those into hierarchical summaries per plasmid (and experiment), using a
-    simple normal-normal partial-pooling approximation to produce:
-        - pooled mean, between-replicate SD, standard error, 95% CI
-  • Writing:
-        parameters/single_cell_noise_timeseries.csv
-        parameters/single_cell_noise_hierarchical.csv
-
-This provides a quantitative noise “fingerprint” for each degron–Cas construct that you
-can refer to when proposing new designs or when framing a PhD project.
+Outputs:
+  - parameters/single_cell_noise_timeseries.csv : Per-(plasmid, exp, rep, time) noise metrics.
+  - parameters/single_cell_noise_hierarchical.csv : Hierarchical summaries per construct.
 """
 
 import os, re, glob, warnings
@@ -42,11 +35,11 @@ warnings.filterwarnings("ignore")
 # OUT_PATH    = os.path.join(BASE_PATH, "plots")
 # PARAM_PATH  = os.path.join(BASE_PATH, "parameters")
 
-OUT_PATH   = "plots"
+OUT_PATH = "plots"
 PARAM_PATH = "parameters"
 
 # FCS files stay at the project root
-FCS_TC_DIR  = os.path.join("fcs_files", "time-course_data")
+FCS_TC_DIR = os.path.join("fcs_files", "time-course_data")
 FCS_NFC_DIR = os.path.join("fcs_files", "NFC")
 
 # (Optional) ensure result dirs exist
@@ -57,8 +50,8 @@ os.makedirs(PARAM_PATH, exist_ok=True)
 CH_FSC_A = "FSC-A"
 CH_SSC_A = "SSC-A"
 CH_FSC_H = "FSC-H"
-CH_BFP   = "BV421-A"
-CH_mCh   = "PE-A"
+CH_BFP = "BV421-A"
+CH_mCh = "PE-A"
 
 # Gating bounds (same as Steps 1–3)
 BOUND_MIN = {CH_FSC_A: 0.4e5, CH_SSC_A: 0.20e5}
@@ -73,8 +66,8 @@ _SPLIT = re.compile(r"_")
 # -----------------------------------------------------------------------------
 def apply_boundary_gate(df: pd.DataFrame) -> pd.DataFrame:
     m = (
-        (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
-        (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
+            (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
+            (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
     )
     out = df.loc[m]
     if out.empty:
@@ -118,9 +111,9 @@ def parse_timecourse_name(name: str):
     """
     parts = _SPLIT.split(name)
     plasmid = parts[2] if len(parts) > 2 else ""
-    exp     = parts[3] if len(parts) > 3 else ""
-    rep     = parts[4] if len(parts) > 4 else ""
-    time_s  = parts[5] if len(parts) > 5 else ""
+    exp = parts[3] if len(parts) > 3 else ""
+    rep = parts[4] if len(parts) > 4 else ""
+    time_s = parts[5] if len(parts) > 5 else ""
     try:
         t = float(time_s)
     except Exception:
@@ -210,6 +203,7 @@ def summarize_noise_per_group(events: pd.DataFrame) -> pd.DataFrame:
       mean_mCherry, var_mCherry, cv2_mCherry,
       n_cells
     """
+
     def _stats(x: pd.Series):
         m = float(x.mean())
         v = float(x.var(ddof=1)) if len(x) > 1 else 0.0

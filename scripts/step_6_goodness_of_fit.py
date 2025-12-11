@@ -2,43 +2,12 @@
 """
 step_6_goodness_of_fit.py
 
-Goodness-of-fit diagnostics for CasTuner Python port.
+Generate goodness-of-fit plots for the three modeling steps:
+  1) Hill dose–response fits
+  2) Derepression ODE fits (REV)
+  3) Repression ODE fits (KD)
 
-This script:
-  - Reconstructs the key datasets used in earlier steps
-    (Hill dose–response, REV derepression, KD repression).
-  - Uses the *final fitted parameters* (Hill_parameters.csv,
-    alphamcherry.csv, delays_derepression.csv, delays_repression.csv, etc.)
-    to recompute model predictions.
-  - Compares observed vs simulated values in scatter plots and residual plots.
-  - Summarizes per-plasmid fit quality with R² and MAE barplots.
-
-Inputs (from Python_results/parameters):
-  - Hill_parameters.csv
-  - alphamcherry.csv
-  - half_times_upregulation.csv
-  - half_times_downregulation.csv
-  - delays_derepression.csv
-  - delays_repression.csv
-
-FCS inputs:
-  - fcs_files/NFC
-  - fcs_files/dose_response_data/R1-R3
-  - fcs_files/time-course_data/...
-
-Outputs:
-  Python_results/plots/step6_goodness_of_fit/
-    - gof_hill_fc_obs_vs_pred.pdf
-    - gof_rev_obs_vs_pred_all.pdf
-    - gof_rev_obs_vs_pred_<plasmid>.pdf
-    - gof_rev_residuals_<plasmid>.pdf
-    - gof_rev_mae_per_plasmid.pdf
-    - gof_rev_r2_per_plasmid.pdf
-    - gof_kd_obs_vs_pred_all.pdf
-    - gof_kd_obs_vs_pred_<plasmid>.pdf
-    - gof_kd_residuals_<plasmid>.pdf
-    - gof_kd_mae_per_plasmid.pdf
-    - gof_kd_r2_per_plasmid.pdf
+Requires the output parameter files from previous steps.
 """
 import os
 from pathlib import Path
@@ -52,13 +21,13 @@ import step_1c_fit_hill_curves as step1c
 import step_2_simulate_derepression as step2
 import step_3_simulate_repression as step3
 
-
 # ---------------------------------------------------------------------
 # Paths and small helpers
 # ---------------------------------------------------------------------
-PARAM_PATH  = Path("parameters")
-PLOTS_ROOT  = Path("plots")
-OUT_PATH    = PLOTS_ROOT / "goodness_of_fit"
+PARAM_PATH = Path("parameters")
+PLOTS_ROOT = Path("plots")
+OUT_PATH = PLOTS_ROOT / "goodness_of_fit"
+
 
 def ensure_outdir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
@@ -120,8 +89,8 @@ def build_hill_dataset():
 
     d4 = pd.concat([rep1, rep2, rep3], ignore_index=True)
 
-    CH_BFP = step1c.CH_BFP     # "BV421-A"
-    CH_mCh = step1c.CH_mCh     # "PE-A"
+    CH_BFP = step1c.CH_BFP  # "BV421-A"
+    CH_mCh = step1c.CH_mCh  # "PE-A"
 
     # 1) mean over NTC rows, grouped only by plasmid
     meanNTC_pl = (
@@ -151,13 +120,14 @@ def build_hill_dataset():
     d4["norm.bfp"] = (
         d4.groupby(["plasmid", "guide"], group_keys=False)[CH_BFP]
         .apply(lambda v: (v - v.min()) / (v.max() - v.min())
-               if v.max() > v.min() else 0.0)
+        if v.max() > v.min() else 0.0)
     )
 
     # Keep only rows actually used for Hill fits: guide == 'G'
     d4g = d4.query("guide == 'G'").copy()
 
     return d4g
+
 
 def gof_hill(out_path: Path):
     """
@@ -426,7 +396,7 @@ def gof_repression(out_path: Path):
 
     for _, row in delays_rep.iterrows():
         pl = row["plasmid"]
-        best_delay = float(row["d_rev"])   # same column name as derepression
+        best_delay = float(row["d_rev"])  # same column name as derepression
 
         sub = kd.query("plasmid == @pl").copy()
         if sub.empty:

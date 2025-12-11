@@ -72,26 +72,27 @@ os.makedirs(OUT_PATH, exist_ok=True)  # ensure plots directory exists
 os.makedirs(PARAM_PATH, exist_ok=True)  # ensure parameters directory exists
 
 # Channel names used in FCS files
-CH_FSC_A = "FSC-A"      # forward scatter area
-CH_SSC_A = "SSC-A"      # side scatter area
-CH_FSC_H = "FSC-H"      # forward scatter height
-CH_BFP   = "BV421-A"    # tagBFP channel
-CH_mCh   = "PE-A"       # mCherry channel
+CH_FSC_A = "FSC-A"  # forward scatter area
+CH_SSC_A = "SSC-A"  # side scatter area
+CH_FSC_H = "FSC-H"  # forward scatter height
+CH_BFP = "BV421-A"  # tagBFP channel
+CH_mCh = "PE-A"  # mCherry channel
 
 # Boundary gate thresholds for FSC-A and SSC-A
 BOUND_MIN = {CH_FSC_A: 0.4e5, CH_SSC_A: 0.20e5}  # lower bounds
-BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}   # upper bounds
+BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}  # upper bounds
 
 # Singlet gate based on FSC-H/FSC-A ratio
 SINGLET_RATIO_LOW, SINGLET_RATIO_HIGH = 0.85, 1.15  # acceptable ratio range
 
 # Plot sizing (inches)
 PLOT_W = 1.5 * 1.618  # golden-ish width
-PLOT_H = 1.5          # height
+PLOT_H = 1.5  # height
 
 # Aesthetics
 POINT_COLOR = "#4DBBD5FF"  # point color for scatter
-THEME = theme_classic()    # clean theme
+THEME = theme_classic()  # clean theme
+
 
 # ----------------------------
 # Gating helpers
@@ -112,8 +113,8 @@ def apply_boundary_gate(df: pd.DataFrame) -> pd.DataFrame:
     """
     # Build boolean mask for events within both FSC-A and SSC-A ranges
     m = (
-        (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
-        (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
+            (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
+            (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
     )
     out = df.loc[m]  # apply mask
     print(f"[gate] boundary: kept {len(out):,}/{len(df):,} events")  # debug
@@ -236,6 +237,7 @@ def load_flowset_medians(folder: str, mBFP_neg: float = 0.0, mmCherry_neg: float
     print(f"[table] medians shape={out.shape}")  # debug
     return out  # table of per-file medians
 
+
 # ----------------------------
 # NFC background (mean of first 3 medians)
 # ----------------------------
@@ -261,6 +263,7 @@ def compute_nfc_background(nfc_dir: str):
     mmCherry_neg = float(df.iloc[:3][CH_mCh].mean())  # mean mCherry of first 3
     print(f"[NFC] mBFP_neg={mBFP_neg:.6g}, mmCherry_neg={mmCherry_neg:.6g}")  # debug
     return mBFP_neg, mmCherry_neg  # background levels
+
 
 # ----------------------------
 # Parse filename: tokens
@@ -288,9 +291,9 @@ def parse_timecourse_name(name: str):
     """
     parts = FILENAME_SPLIT_RE.split(name)  # split by underscores
     plasmid = parts[2] if len(parts) > 2 else ""  # third token
-    exp     = parts[3] if len(parts) > 3 else ""  # fourth token
-    rep     = parts[4] if len(parts) > 4 else ""  # fifth token
-    time_s  = parts[5] if len(parts) > 5 else ""  # sixth token (string)
+    exp = parts[3] if len(parts) > 3 else ""  # fourth token
+    rep = parts[4] if len(parts) > 4 else ""  # fifth token
+    time_s = parts[5] if len(parts) > 5 else ""  # sixth token (string)
     try:
         time = float(time_s)  # direct float cast if clean
     except Exception:
@@ -298,6 +301,7 @@ def parse_timecourse_name(name: str):
         m = re.search(r"(\d+(?:\.\d+)?)", time_s)
         time = float(m.group(1)) if m else np.nan
     return plasmid, exp, rep, time  # parsed tokens
+
 
 # ----------------------------
 # Build KD dataset
@@ -352,6 +356,7 @@ def load_kd_timecourse(mBFP_neg: float, mmCherry_neg: float) -> pd.DataFrame:
     print(f"[KD] plasmids present: {df['plasmid'].dropna().unique().tolist()}")  # debug
     return df  # KD-only dataset
 
+
 # ----------------------------
 # Normalization (KD)
 # ----------------------------
@@ -375,16 +380,16 @@ def add_minmax_norm_kd(df: pd.DataFrame) -> pd.DataFrame:
     # Compute per-plasmid final mean (time > 10)
     mean_final = (
         df.query("time > 10")
-          .groupby("plasmid")[CH_BFP]
-          .mean().rename("mean.final").reset_index()
+        .groupby("plasmid")[CH_BFP]
+        .mean().rename("mean.final").reset_index()
     )
     print(f"[norm] mean.final rows: {len(mean_final)}")  # debug
 
     # Compute per-plasmid initial mean (time == 0)
     mean_init = (
         df.query("time == 0")
-          .groupby("plasmid")[CH_BFP]
-          .mean().rename("mean.init").reset_index()
+        .groupby("plasmid")[CH_BFP]
+        .mean().rename("mean.init").reset_index()
     )
     print(f"[norm] mean.init rows:  {len(mean_init)}")  # debug
 
@@ -400,6 +405,7 @@ def add_minmax_norm_kd(df: pd.DataFrame) -> pd.DataFrame:
     print(out[["plasmid", "time", CH_BFP, "mean.init", "mean.final", "norm.bfp"]]
           .head().to_string(index=False))
     return out  # normalized table
+
 
 # ----------------------------
 # Model & fitting (KD)
@@ -461,6 +467,7 @@ def fit_half_time_rise(t, y, start=0.8):
     print(f"[fit] t_half={popt[0]:.6g}, SE={se:.3g}")  # debug
     return float(popt[0]), se  # parameter and SE
 
+
 # ----------------------------
 # Plot helper (match R look)
 # ----------------------------
@@ -484,18 +491,19 @@ def save_kd_plot(df: pd.DataFrame, t_half: float, out_pdf: str):
 
     # Build plot
     p = (
-        ggplot(df, aes("time", "norm.bfp"))
-        + geom_point(size=0.4, alpha=0.7, color=POINT_COLOR)
-        + geom_line(data=curve, mapping=aes(x="time", y="fit"), color="black")
-        + coord_cartesian(ylim=(-0.15, 1.2))
-        + scale_y_continuous(breaks=[0, 0.25, 0.5, 0.75, 1.0])
-        + labs(x="Time (hours)", y="tagBFP (% of final)")
-        + THEME
+            ggplot(df, aes("time", "norm.bfp"))
+            + geom_point(size=0.4, alpha=0.7, color=POINT_COLOR)
+            + geom_line(data=curve, mapping=aes(x="time", y="fit"), color="black")
+            + coord_cartesian(ylim=(-0.15, 1.2))
+            + scale_y_continuous(breaks=[0, 0.25, 0.5, 0.75, 1.0])
+            + labs(x="Time (hours)", y="tagBFP (% of final)")
+            + THEME
     )
     # Save to disk
     out_path = os.path.join(OUT_PATH, out_pdf)
     p.save(out_path, width=PLOT_W, height=PLOT_H, units="in")
     print(f"[plot] saved: {out_path}")  # debug
+
 
 # ----------------------------
 # Main
@@ -526,10 +534,10 @@ def main():
     print("\n== Step 4: Fit half-times and plot ==")  # banner
     targets = [
         ("SP430ABA", "KD_KRAB-Split-dCas9_fitting.pdf", "SP430A"),
-        ("SP430",    "KD_dCas9_fitting.pdf",            "SP430"),
-        ("SP428",    "KD_KRAB-dCas9_fitting.pdf",       "SP428"),
-        ("SP427",    "KD_HDAC4-dCas9_fitting.pdf",      "SP427"),
-        ("SP411",    "KD_CasRx_fitting.pdf",            "SP411"),
+        ("SP430", "KD_dCas9_fitting.pdf", "SP430"),
+        ("SP428", "KD_KRAB-dCas9_fitting.pdf", "SP428"),
+        ("SP427", "KD_HDAC4-dCas9_fitting.pdf", "SP427"),
+        ("SP411", "KD_CasRx_fitting.pdf", "SP411"),
     ]
 
     rows = []  # collect results for CSV
@@ -560,6 +568,7 @@ def main():
         print(ht.to_string(index=False))  # echo table
     else:
         print("[WARN] No half-times estimated.")  # nothing to write
+
 
 # Entrypoint
 if __name__ == "__main__":

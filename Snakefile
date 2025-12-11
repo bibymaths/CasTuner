@@ -24,26 +24,14 @@ def script(name: str) -> str:
 # --------------------------------------------------------------------------
 rule all:
     input:
-        "clean/.ok",
-        f"{OUT_PARAMS}/half_times_upregulation.csv",
-        f"{OUT_PARAMS}/half_times_downregulation.csv",
-        f"{OUT_PARAMS}/Hill_parameters.csv",
-        f"{OUT_PARAMS}/alphamcherry.csv",
-        f"{OUT_PARAMS}/delays_derepression.csv",
-        f"{OUT_PARAMS}/delays_repression.csv",
-        f"{OUT_PARAMS}/single_cell_noise_timeseries.csv",
-        f"{OUT_PARAMS}/single_cell_noise_hierarchical.csv",
-        f"{OUT_PARAMS}/design_space_scan_repression.csv",
-        f"{OUT_PLOTS}/noise_kinetics/noise_vs_mean_BFP.pdf",
-        f"{OUT_PLOTS}/goodness_of_fit/gof_hill_fc_obs_vs_pred.pdf",
-        f"{OUT_PLOTS}/design_space_map.pdf",
-        f"{OUT_PARAMS}/candidate_selection_top10.csv",
-        "report/CasTuner_summary_report.pdf"
+        "workflow.done"
 
 # --------------------------------------------------------------------------
 # Setup
 # --------------------------------------------------------------------------
 rule _mkdirs:
+    input:
+        "clean/.ok"
     output:
         touch(f"{OUT_PARAMS}/.ok"),
         touch(f"{OUT_PLOTS}/.ok")
@@ -276,43 +264,85 @@ rule generate_report:
 # --------------------------------------------------------------------------
 # Cleanup Rule
 # --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Cleanup Rule (pre-run)
+# --------------------------------------------------------------------------
 rule clean_outputs:
     """
-    Global cleanup:
-    - Always: remove contents of parameters/ and plots/
-    - If config['fresh_run'] == true: also delete report/
-    Runs automatically before everything else via rule `all`.
+    Pre-run cleanup:
+    - Always: remove OUT_PARAMS and OUT_PLOTS completely.
+    Runs before anything else via _mkdirs.
     """
     params:
         params_dir = OUT_PARAMS,
-        plots_dir  = OUT_PLOTS,
-        report_dir = "report",
-        fresh      = config.get("fresh_run")
+        plots_dir  = OUT_PLOTS
     output:
-        touch("clean/.ok")
+        temp("clean/.ok")
     shell:
         r"""
         set -euo pipefail
 
         params_dir="{params.params_dir}"
         plots_dir="{params.plots_dir}"
-        report_dir="{params.report_dir}"
-        fresh="{params.fresh}"
 
-        echo "[clean] Removing contents of $params_dir and $plots_dir..."
+        echo "[clean] Removing $params_dir and $plots_dir before run..."
 
-        # Remove everything inside params/ and plots/, but keep the dirs themselves
-        for d in "$params_dir" "$plots_dir"; do
-            if [ -d "$d" ]; then
-                find "$d" -mindepth 1 -maxdepth 1 -exec rm -rf {{}} +
-            fi
-        done
+        if [ -d "$params_dir" ]; then rm -rf "$params_dir"; fi
+        if [ -d "$plots_dir" ]; then rm -rf "$plots_dir"; fi
 
-        # Fresh run: also wipe report/
-        if [ "$fresh" = "True" ] || [ "$fresh" = "true" ]; then
-            echo "[clean] fresh_run enabled → removing report/ entirely."
-            rm -rf "$report_dir"
-        fi
+        mkdir -p "$(dirname {output})"
+        echo "ok" > {output}
 
         echo "[clean] Done."
+        """
+
+
+# --------------------------------------------------------------------------
+# Post-Cleanup Rule
+# --------------------------------------------------------------------------
+rule cleanup_after_report:
+    """
+    Final cleanup:
+    - After the report is successfully generated, remove OUT_PARAMS and OUT_PLOTS.
+    """
+    input:
+        "report/CasTuner_summary_report.pdf"
+    params:
+        params_dir = OUT_PARAMS,
+        plots_dir  = OUT_PLOTS
+    output:
+        temp("postclean/.ok")
+    shell:
+        r"""
+        set -euo pipefail
+
+        params_dir="{params.params_dir}"
+        plots_dir="{params.plots_dir}"
+
+        echo "[postclean] Removing $params_dir and $plots_dir after successful run..."
+
+        if [ -d "$params_dir" ]; then rm -rf "$params_dir"; fi
+        if [ -d "$plots_dir" ]; then rm -rf "$plots_dir"; fi
+
+        mkdir -p "$(dirname {output})"
+        echo "ok" > {output}
+
+        echo "[postclean] Done."
+        """
+
+rule workflow_done:
+    """
+    Dummy final target that depends on the report and post-clean.
+    Marked as temp so it is deleted after the workflow finishes.
+    This ensures the whole pipeline is rebuilt on each `snakemake` run.
+    """
+    input:
+        "report/CasTuner_summary_report.pdf",
+        "postclean/.ok"
+    output:
+        temp("workflow.done")
+    shell:
+        r"""
+        set -euo pipefail
+        echo "workflow completed on $(date)" > {output}
         """
