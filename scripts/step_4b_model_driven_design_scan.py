@@ -180,9 +180,9 @@ def simulate_repression(t_up: float, K: float, n: float, alpha: float,
         t_span=(t_eval[0], t_eval[-1]),
         y0=y0,
         t_eval=t_eval,
-        method="LSODA",
-        rtol=1e-7,
-        atol=1e-9,
+        # method="LSODA",
+        # rtol=1e-7,
+        # atol=1e-9,
     )
     if not sol.success:
         raise RuntimeError(f"ODE solver failed: {sol.message}")

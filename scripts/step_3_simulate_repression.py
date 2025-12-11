@@ -489,7 +489,9 @@ def simulate(beta: float, t_up: float, K: float, n: float, alpha: float,
     print(f"[sim] t∈[{t_start},{t_end}] dt={dt}, params: beta={beta:.4g}, t_up={t_up:.4g}, K={K:.4g}, n={n:.4g}, alpha={alpha:.4g}")  # debug
     sol = solve_ivp(                                            # solve IVP
         ode_rhs, (t_start, t_end), y0,
-        t_eval=t_eval, method="LSODA", max_step=0.5,
+        t_eval=t_eval,
+        # method="LSODA",
+        # max_step=0.5,
         args=(beta, t_up, K, n, alpha)
     )
     if not sol.success:                                         # propagate failure
