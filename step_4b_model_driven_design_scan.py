@@ -35,8 +35,10 @@ from scipy.integrate import solve_ivp
 
 warnings.filterwarnings("ignore")
 
-BASE_PATH   = "Python_results"
-PARAM_PATH  = os.path.join(BASE_PATH, "parameters")
+# BASE_PATH   = "Python_results"
+# PARAM_PATH  = os.path.join(BASE_PATH, "parameters")
+
+PARAM_PATH  = "parameters"
 os.makedirs(PARAM_PATH, exist_ok=True)
 
 

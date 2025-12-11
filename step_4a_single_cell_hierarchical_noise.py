@@ -36,11 +36,14 @@ warnings.filterwarnings("ignore")
 # Paths and config
 # -----------------------------------------------------------------------------
 # Base directory for all Python-generated results
-BASE_PATH   = "Python_results"
+# BASE_PATH   = "Python_results"
 
 # Inside Python_results/
-OUT_PATH    = os.path.join(BASE_PATH, "plots")
-PARAM_PATH  = os.path.join(BASE_PATH, "parameters")
+# OUT_PATH    = os.path.join(BASE_PATH, "plots")
+# PARAM_PATH  = os.path.join(BASE_PATH, "parameters")
+
+OUT_PATH   = "plots"
+PARAM_PATH = "parameters"
 
 # FCS files stay at the project root
 FCS_TC_DIR  = os.path.join("fcs_files", "time-course_data")

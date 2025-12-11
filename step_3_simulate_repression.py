@@ -499,6 +499,45 @@ def simulate(beta: float, t_up: float, K: float, n: float, alpha: float,
     print(f"[sim] steps={len(sol.t)} R[0..2]={R[:3]} Y[0..2]={Y[:3]}")  # debug
     return sol.t, R, Y                                          # return time series
 
+def simulate_ode(R0: float, Y0: float, pars: pd.Series,
+                 t0: float = 0.0, tmax: float = 150.0, step: float = 0.05,
+                 delay: float = 0.0) -> pd.DataFrame:
+    """
+    Robust adapter for Step 6 compatibility.
+    Unpacks parameters, handles casing ('K' vs 'k'), and skips bad rows.
+    """
+
+    # 1. Helper to safely get parameters regardless of casing
+    def get_par(p, *keys):
+        for k in keys:
+            if k in p: return float(p[k])
+        # If we reach here, the key is missing.
+        # For 'K', we might have 'k'. For 'n', 'hill_n'.
+        return None
+
+    # 2. Extract keys with fallbacks
+    t_up = get_par(pars, "t_up", "halftime", "tup")
+    K = get_par(pars, "K", "k")
+    n = get_par(pars, "n", "hill_n", "N")
+    alpha = get_par(pars, "alpha", "alphamcherry", "a")
+
+    # 3. Guard against missing or NaN parameters
+    if any(x is None or math.isnan(x) for x in [t_up, K, n, alpha]):
+        # This prevents the crash. We return an empty DataFrame or
+        # a flat line if you prefer, but empty allows the loop to continue.
+        # Check specific variable to debug:
+        # print(f"[WARN] Skipping {pars.name if hasattr(pars, 'name') else 'row'}: t_up={t_up}, K={K}, n={n}, alpha={alpha}")
+        return pd.DataFrame({"time": [], "R": [], "Y": []})
+
+    # 4. Calculate beta and run simulation
+    beta = math.log(2.0) / t_up
+
+    # Call the existing internal 'simulate' function
+    t_arr, R_arr, Y_arr = simulate(beta, t_up, K, n, alpha, t0, tmax, step)
+
+    # 5. Return formatted result
+    return pd.DataFrame({"time": t_arr + delay, "R": R_arr, "Y": Y_arr})
+
 # ----------------------------
 # Delay scan: compute MAE between simulated Y and experimental mean fc.cherry
 # for delays in [0,25] step 0.5
@@ -647,6 +686,29 @@ def save_fit_plots(pl_df: pd.DataFrame, base_t: np.ndarray, base_R: np.ndarray,
     p2.save(out2, width=PLOT_W, height=PLOT_H, units="in")             # save
     print(f"[plot] saved: {out2}")                                     # debug
 
+
+def build_kd_dataset(nfc_dir="fcs_files/NFC",
+                     tc_dir="fcs_files/time-course_data") -> pd.DataFrame:
+    """
+    Reconstruct the full KD dataset with background subtraction and normalization.
+    Exposed so external scripts (e.g. Step 6) can load the exact same data.
+    """
+    # 1. Compute NFC background
+    mBFP_neg, mmCherry_neg = compute_nfc_background(nfc_dir)
+
+    # 2. Load KD time-course
+    # Note: We need to update load_kd to accept the directory if we want strict path handling,
+    # but for now we rely on the default or update load_kd signature below.
+    # For this surgical fix, we assume load_kd and load_flowset_medians use the hardcoded path
+    # OR we update them. Let's update the calls to be safe if load_kd supports it.
+
+    # Since load_kd inside this script currently hardcodes the path,
+    # we should ideally update load_kd to accept a path argument.
+    # However, to keep this fix "surgical" and low-touch:
+    kd_data = load_kd(mBFP_neg, mmCherry_neg)
+
+    # 3. Add FC and Norm
+    return add_fc_and_norm(kd_data)
 # ----------------------------
 # Main
 # ----------------------------
@@ -654,8 +716,8 @@ def main():
     # Background from NFC
     mBFP_neg, mmCherry_neg = compute_nfc_background("fcs_files/NFC")
     # KD dataset
-    KD = add_fc_and_norm(load_kd(mBFP_neg, mmCherry_neg))
-
+    # KD = add_fc_and_norm(load_kd(mBFP_neg, mmCherry_neg))
+    KD = build_kd_dataset()
     # Parameters (t_up, K,n, alpha)
     all_par = load_parameters()
 
