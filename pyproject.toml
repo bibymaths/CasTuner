@@ -24,6 +24,7 @@ dependencies = [
     "plotnine",
     "FlowCytometryTools",
     "pandoc>=2.4",
+    "reportlab>=4.4.6",
 ]
 
 [project.urls]

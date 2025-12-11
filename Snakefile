@@ -13,7 +13,9 @@ UV = "uv run python"
 
 
 def script(name: str) -> str:
-    """Return full path to a script inside the scripts/ directory."""
+    """
+    Return full path to a script inside the scripts/ directory.
+    """
     return f"{SCRIPTS}/{name}"
 
 
@@ -22,6 +24,7 @@ def script(name: str) -> str:
 # --------------------------------------------------------------------------
 rule all:
     input:
+        "clean/.ok",
         f"{OUT_PARAMS}/half_times_upregulation.csv",
         f"{OUT_PARAMS}/half_times_downregulation.csv",
         f"{OUT_PARAMS}/Hill_parameters.csv",
@@ -34,7 +37,8 @@ rule all:
         f"{OUT_PLOTS}/noise_kinetics/noise_vs_mean_BFP.pdf",
         f"{OUT_PLOTS}/goodness_of_fit/gof_hill_fc_obs_vs_pred.pdf",
         f"{OUT_PLOTS}/design_space_map.pdf",
-        f"{OUT_PARAMS}/candidate_selection_top10.csv"
+        f"{OUT_PARAMS}/candidate_selection_top10.csv",
+        "report/CasTuner_summary_report.pdf"
 
 # --------------------------------------------------------------------------
 # Setup
@@ -247,3 +251,68 @@ rule select_designs:
             uv=UV,
             script=script("step_7_design_selection_and_map.py"),
         )
+
+# --------------------------------------------------------------------------
+# Step 8: Generate Summary Report
+# --------------------------------------------------------------------------
+rule generate_report:
+    input:
+        f"{OUT_PARAMS}/candidate_selection_top10.csv",
+        f"{OUT_PLOTS}/design_space_map.pdf",
+        f"{OUT_PLOTS}/goodness_of_fit/gof_hill_fc_obs_vs_pred.pdf",
+        f"{OUT_PLOTS}/noise_kinetics/noise_vs_mean_BFP.pdf"
+    output:
+        "report/CasTuner_summary_report.pdf"
+    shell:
+        (
+            "{uv} {script} && "
+            "test -s {{output}}"
+        ).format(
+            uv=UV,
+            script=script("step_8_generate_report.py"),
+        )
+
+
+# --------------------------------------------------------------------------
+# Cleanup Rule
+# --------------------------------------------------------------------------
+rule clean_outputs:
+    """
+    Global cleanup:
+    - Always: remove contents of parameters/ and plots/
+    - If config['fresh_run'] == true: also delete report/
+    Runs automatically before everything else via rule `all`.
+    """
+    params:
+        params_dir = OUT_PARAMS,
+        plots_dir  = OUT_PLOTS,
+        report_dir = "report",
+        fresh      = config.get("fresh_run")
+    output:
+        touch("clean/.ok")
+    shell:
+        r"""
+        set -euo pipefail
+
+        params_dir="{params.params_dir}"
+        plots_dir="{params.plots_dir}"
+        report_dir="{params.report_dir}"
+        fresh="{params.fresh}"
+
+        echo "[clean] Removing contents of $params_dir and $plots_dir..."
+
+        # Remove everything inside params/ and plots/, but keep the dirs themselves
+        for d in "$params_dir" "$plots_dir"; do
+            if [ -d "$d" ]; then
+                find "$d" -mindepth 1 -maxdepth 1 -exec rm -rf {{}} +
+            fi
+        done
+
+        # Fresh run: also wipe report/
+        if [ "$fresh" = "True" ] || [ "$fresh" = "true" ]; then
+            echo "[clean] fresh_run enabled → removing report/ entirely."
+            rm -rf "$report_dir"
+        fi
+
+        echo "[clean] Done."
+        """

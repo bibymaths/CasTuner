@@ -260,6 +260,17 @@ def gof_derepression(out_path: Path):
     pars = step2.load_parameters()  # same logic as in step_2_simulate_derepression
     delays_de = pd.read_csv(PARAM_PATH / "delays_derepression.csv")
 
+    name_map = {
+        "430": "SP430",
+        "411": "SP411",
+        "427": "SP427",
+        "428": "SP428",
+        "430ABA": "SP430A"
+    }
+    # Apply map; drop rows that don't match known targets
+    rev["plasmid"] = rev["plasmid"].map(name_map)
+    rev = rev.dropna(subset=["plasmid"])
+
     all_obs = []
     all_pred = []
     rows_stats = []
@@ -397,6 +408,17 @@ def gof_repression(out_path: Path):
     kd = build_kd_dataset()
     pars = step3.load_parameters()
     delays_rep = pd.read_csv(PARAM_PATH / "delays_repression.csv")
+
+    name_map = {
+        "430": "SP430",
+        "411": "SP411",
+        "427": "SP427",
+        "428": "SP428",
+        "430ABA": "SP430A"
+    }
+    # Apply map; drop rows that don't match known targets
+    kd["plasmid"] = kd["plasmid"].map(name_map)
+    kd = kd.dropna(subset=["plasmid"])
 
     all_obs = []
     all_pred = []
