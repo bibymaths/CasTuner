@@ -1,0 +1,64 @@
+<svg width="900" height="260" viewBox="0 0 900 260"
+     xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background -->
+  <rect width="900" height="260" fill="#0d1117"/>
+
+  <!-- Hill Curve Panel -->
+  <rect x="40" y="30" width="380" height="200" rx="12"
+        fill="#111827" stroke="#1f2937" stroke-width="2"/>
+
+  <!-- Hill curve (sigmoid) -->
+  <path d="M70 200
+           C 140 200, 180 140, 240 120
+           S 340 60, 390 60"
+        stroke="#a78bfa" stroke-width="4"
+        fill="none" stroke-linecap="round"
+        stroke-dasharray="500" stroke-dashoffset="500">
+    <animate attributeName="stroke-dashoffset"
+             from="500" to="0"
+             dur="2.5s"
+             repeatCount="indefinite"/>
+  </path>
+
+  <!-- Hill title -->
+  <text x="60" y="55" fill="#9ca3af" font-size="16"
+        font-family="sans-serif">Hill Dose–Response</text>
+
+  <!-- Axes -->
+  <line x1="70" y1="200" x2="380" y2="200"
+        stroke="#374151" stroke-width="2"/>
+  <line x1="70" y1="200" x2="70" y2="70"
+        stroke="#374151" stroke-width="2"/>
+
+  <text x="200" y="225" fill="#6b7280" font-size="12"
+        font-family="sans-serif">Repressor (normalized)</text>
+  <text x="25" y="135" fill="#6b7280" font-size="12"
+        transform="rotate(-90 25 135)"
+        font-family="sans-serif">Fold-change</text>
+
+
+  <!-- Oscillation Panel -->
+  <rect x="460" y="30" width="380" height="200" rx="12"
+        fill="#111827" stroke="#1f2937" stroke-width="2"/>
+
+  <!-- Oscillatary feedback waveform -->
+  <path d="M490 160
+           q 30 -90 60 0
+           t 60 0
+           t 60 0
+           t 60 0
+           t 60 0"
+        stroke="#60a5fa" stroke-width="4"
+        fill="none" stroke-linecap="round"
+        stroke-dasharray="420" stroke-dashoffset="420">
+    <animate attributeName="stroke-dashoffset"
+             from="420" to="0"
+             dur="2s"
+             repeatCount="indefinite"/>
+  </path>
+
+  <text x="480" y="55" fill="#9ca3af" font-size="16"
+        font-family="sans-serif">Oscillatory Kinetics</text>
+
+</svg>

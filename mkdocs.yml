@@ -1,6 +1,7 @@
-site_name: CasTuner Python Port
+site_name: CasTuner - Python Port
 site_description: "A full Python re-implementation of CasTuner modelling, ODE inference, kinetic fitting, and design-space exploration."
 site_author: Abhinav Mishra
+site_url: https://bibymaths.github.io/CasTuner/
 repo_url: https://github.com/bibymaths/CasTuner
 repo_name: GitHub
 
@@ -25,13 +26,15 @@ plugins:
       default_handler: python
       handlers:
         python:
-          import:
+          inventories:
             - https://docs.python.org/3/objects.inv
           options:
             show_source: true
             show_root_full_path: false
             separate_signature: true
             members_order: alphabetical
+            docstring_options:
+              warn_missing_types: false
   - gen-files:
       scripts:
         - docs/generate_api.py
