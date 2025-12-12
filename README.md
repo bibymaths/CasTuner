@@ -1,6 +1,11 @@
 # CasTuner (Python Port)
 
 <img src="docs/assets/logo.svg" alt="CasTuner Logo" width="400"/> 
+ 
+[![Deploy MkDocs to GitHub Pages](https://github.com/bibymaths/CasTuner/actions/workflows/deploy.yml/badge.svg)](https://github.com/bibymaths/CasTuner/actions/workflows/deploy.yml) 
+[![Create Release](https://github.com/bibymaths/CasTuner/actions/workflows/release.yml/badge.svg)](https://github.com/bibymaths/CasTuner/actions/workflows/release.yml) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.9%20|%203.10%20|%203.11-blue.svg)](https://www.python.org/downloads/) 
 
 ## Modelling of repression and derepression dynamics in CRISPR/Cas-based analog gene-tuning systems
 
