@@ -2,19 +2,6 @@ name: Create Release
 
 on:
   workflow_dispatch:
-    inputs:
-      release_type:
-        description: "Type of release"
-        required: true
-        default: "stable"
-        type: choice
-        options:
-          - stable
-          - prerelease
-      preid:
-        description: "Pre-release identifier (used only if release_type=prerelease, e.g. rc1, beta1)"
-        required: false
-        default: "rc1"
 
 permissions:
   contents: write
@@ -39,15 +26,13 @@ jobs:
           try:
               import tomllib  # Python 3.11+
           except ImportError:
-              import tomli as tomllib  # fallback if ever needed
+              import tomli as tomllib
 
           data = tomllib.loads(text)
 
           version = None
           if "project" in data and "version" in data["project"]:
               version = data["project"]["version"]
-          elif "tool" in data and "poetry" in data["tool"] and "version" in data["tool"]["poetry"]:
-              version = data["tool"]["poetry"]["version"]
 
           if not version:
               raise SystemExit("No 'version' found in pyproject.toml")
@@ -57,39 +42,12 @@ jobs:
               f.write(f"version={version}\n")
           PY
 
-      - name: Compute tag and name
-        id: meta
-        run: |
-          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
-          PREID="${{ github.event.inputs.preid }}"
-          VERSION="${{ steps.version.outputs.version }}"
-
-          if [ "$RELEASE_TYPE" = "prerelease" ]; then
-            TAG="v${VERSION}-${PREID}"
-            NAME="Pre-release v${VERSION}-${PREID}"
-            PRERELEASE="true"
-          else
-            TAG="v${VERSION}"
-            NAME="Release v${VERSION}"
-            PRERELEASE="false"
-          fi
-
-          echo "Tag: $TAG"
-          echo "Name: $NAME"
-          echo "Prerelease: $PRERELEASE"
-
-          {
-            echo "tag=$TAG"
-            echo "name=$NAME"
-            echo "prerelease=$PRERELEASE"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Create tag if missing
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ github.token }}
           script: |
-            const tag = "${{ steps.meta.outputs.tag }}";
+            const tag = "v${{ steps.version.outputs.version }}";
             const sha = context.sha;
 
             console.log(`Processing tag: ${tag}`);
@@ -114,9 +72,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: ${{ steps.meta.outputs.name }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
           generate_release_notes: true
-          prerelease: ${{ steps.meta.outputs.prerelease }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
