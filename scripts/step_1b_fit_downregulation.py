@@ -52,7 +52,6 @@ Outputs:
   - parameters/half_times_downregulation.csv
 """
 
-
 import os, re, glob, math, warnings
 import numpy as np
 import pandas as pd
@@ -62,37 +61,39 @@ from plotnine import (
     ggplot, aes, geom_point, geom_line, labs,
     scale_y_continuous, coord_cartesian, theme_classic
 )
+
 warnings.filterwarnings("ignore")
 
 # ----------------------------
 # Config / constants
 # ----------------------------
-OUT_PATH = "plots"                                 # directory for plot outputs
-PARAM_PATH = "parameters"                          # directory for parameter CSVs
-os.makedirs(OUT_PATH, exist_ok=True)               # ensure plot dir exists
-os.makedirs(PARAM_PATH, exist_ok=True)             # ensure parameter dir exists
+OUT_PATH = "plots"  # directory for plot outputs
+PARAM_PATH = "parameters"  # directory for parameter CSVs
+os.makedirs(OUT_PATH, exist_ok=True)  # ensure plot dir exists
+os.makedirs(PARAM_PATH, exist_ok=True)  # ensure parameter dir exists
 
 # Channels
-CH_FSC_A = "FSC-A"                                 # forward scatter area
-CH_SSC_A = "SSC-A"                                 # side scatter area
-CH_FSC_H = "FSC-H"                                 # forward scatter height
-CH_BFP   = "BV421-A"                               # tagBFP channel name
-CH_mCh   = "PE-A"                                  # mCherry channel name
+CH_FSC_A = "FSC-A"  # forward scatter area
+CH_SSC_A = "SSC-A"  # side scatter area
+CH_FSC_H = "FSC-H"  # forward scatter height
+CH_BFP = "BV421-A"  # tagBFP channel name
+CH_mCh = "PE-A"  # mCherry channel name
 
 # Boundary gate (matches R numeric limits)
-BOUND_MIN = {CH_FSC_A: 0.4e5, CH_SSC_A: 0.20e5}    # lower thresholds for FSC/SSC
-BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}     # upper thresholds for FSC/SSC
+BOUND_MIN = {CH_FSC_A: 0.4e5, CH_SSC_A: 0.20e5}  # lower thresholds for FSC/SSC
+BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}  # upper thresholds for FSC/SSC
 
 # Singlet gate (FSC-H ~ FSC-A)
-SINGLET_RATIO_LOW, SINGLET_RATIO_HIGH = 0.85, 1.15 # acceptable FSC-H/FSC-A ratio
+SINGLET_RATIO_LOW, SINGLET_RATIO_HIGH = 0.85, 1.15  # acceptable FSC-H/FSC-A ratio
 
 # Plot sizing (inches), like set_panel_size in R
-PLOT_W = 1.5 * 1.618                               # plot width (golden-ish)
-PLOT_H = 1.5                                       # plot height
+PLOT_W = 1.5 * 1.618  # plot width (golden-ish)
+PLOT_H = 1.5  # plot height
 
 # Aesthetics
-POINT_COLOR = "#4DBBD5FF"                          # point color (NPG-like)
-THEME = theme_classic()                            # clean ggplot-like theme
+POINT_COLOR = "#4DBBD5FF"  # point color (NPG-like)
+THEME = theme_classic()  # clean ggplot-like theme
+
 
 # ----------------------------
 # Gating helpers
@@ -111,13 +112,13 @@ def apply_boundary_gate(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Subset passing the boundary gate.
     """
-    m = (                                            # build mask within bounds
-        (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
-        (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
+    m = (  # build mask within bounds
+            (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
+            (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
     )
-    out = df.loc[m]                                  # subset rows by mask
+    out = df.loc[m]  # subset rows by mask
     print(f"[gate] boundary: {len(out):,}/{len(df):,} kept")  # debug summary
-    return out                                       # return gated events
+    return out  # return gated events
 
 
 def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
@@ -136,9 +137,9 @@ def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
     """
     ratio = df[CH_FSC_H] / (df[CH_FSC_A].replace(0, np.nan))  # compute ratio, avoid /0
     m = (ratio >= SINGLET_RATIO_LOW) & (ratio <= SINGLET_RATIO_HIGH)  # mask within window
-    out = df.loc[m]                                            # subset
-    print(f"[gate] singlet : {len(out):,}/{len(df):,} kept")   # debug summary
-    return out                                                 # return singlets
+    out = df.loc[m]  # subset
+    print(f"[gate] singlet : {len(out):,}/{len(df):,} kept")  # debug summary
+    return out  # return singlets
 
 
 def median_channels_for_file(fpath: str) -> pd.Series:
@@ -155,25 +156,25 @@ def median_channels_for_file(fpath: str) -> pd.Series:
     pd.Series
         Median values (numeric-only) with '__filename' field.
     """
-    print(f"[read] {os.path.basename(fpath)}")                 # which file
-    sample = FCMeasurement(ID=os.path.basename(fpath),         # load FCS events
+    print(f"[read] {os.path.basename(fpath)}")  # which file
+    sample = FCMeasurement(ID=os.path.basename(fpath),  # load FCS events
                            datafile=fpath).data
     print(f"[read] events={len(sample):,}, cols={len(sample.columns)}")  # size preview
     for ch in (CH_FSC_A, CH_SSC_A, CH_FSC_H, CH_BFP, CH_mCh):  # validate channels
         if ch not in sample.columns:
             raise ValueError(f"Channel '{ch}' not found in: {fpath}")
-    gated = apply_boundary_gate(sample)                        # boundary gate
-    if len(gated) == 0:                                        # fallback if empty
+    gated = apply_boundary_gate(sample)  # boundary gate
+    if len(gated) == 0:  # fallback if empty
         print("[gate] boundary empty → using raw sample")
         gated = sample
-    singlets = apply_singlet_gate(gated)                       # singlet gate
-    if len(singlets) == 0:                                     # fallback if empty
+    singlets = apply_singlet_gate(gated)  # singlet gate
+    if len(singlets) == 0:  # fallback if empty
         print("[gate] singlet empty  → using boundary-gated")
         singlets = gated
-    s = singlets.median(numeric_only=True)                     # per-channel medians
+    s = singlets.median(numeric_only=True)  # per-channel medians
     print(f"[median] BFP~{s.get(CH_BFP, np.nan):.3g}, mCh~{s.get(CH_mCh, np.nan):.3g}")  # preview
     s["__filename"] = os.path.splitext(os.path.basename(fpath))[0]  # store basename
-    return s                                                   # return medians series
+    return s  # return medians series
 
 
 def load_flowset_medians(folder: str) -> pd.DataFrame:
@@ -190,13 +191,14 @@ def load_flowset_medians(folder: str) -> pd.DataFrame:
     pd.DataFrame
         One row per file with medians and '__filename'.
     """
-    files = sorted(glob.glob(os.path.join(folder, "*.fcs")))   # discover files
-    print(f"[scan] {folder} → {len(files)} files")             # debug
-    if not files:                                              # guard: no inputs
+    files = sorted(glob.glob(os.path.join(folder, "*.fcs")))  # discover files
+    print(f"[scan] {folder} → {len(files)} files")  # debug
+    if not files:  # guard: no inputs
         raise FileNotFoundError(f"No FCS files found in: {folder}")
     out = pd.DataFrame([median_channels_for_file(f) for f in files])  # compute all medians
-    print(f"[table] medians shape={out.shape}")                # debug
-    return out                                                 # return table
+    print(f"[table] medians shape={out.shape}")  # debug
+    return out  # return table
+
 
 # ----------------------------
 # NFC background (mean of first 3 medians)
@@ -215,17 +217,19 @@ def compute_nfc_background(nfc_dir: str):
     (float, float)
         (mBFP_neg, mmCherry_neg) background medians.
     """
-    df = load_flowset_medians(nfc_dir)                          # load NFC medians
+    df = load_flowset_medians(nfc_dir)  # load NFC medians
     print(f"[NFC] files={len(df)}; using first 3 for background")  # debug
-    mBFP_neg = float(df.iloc[:3][CH_BFP].mean())                # mean BFP background
-    mmCherry_neg = float(df.iloc[:3][CH_mCh].mean())            # mean mCherry background
+    mBFP_neg = float(df.iloc[:3][CH_BFP].mean())  # mean BFP background
+    mmCherry_neg = float(df.iloc[:3][CH_mCh].mean())  # mean mCherry background
     print(f"[NFC] mBFP_neg={mBFP_neg:.6g}, mmCherry_neg={mmCherry_neg:.6g}")  # debug
-    return mBFP_neg, mmCherry_neg                               # return tuple
+    return mBFP_neg, mmCherry_neg  # return tuple
+
 
 # ----------------------------
 # Parse filename: tokens
 # ----------------------------
-FILENAME_SPLIT_RE = re.compile(r"_")                            # split on underscores
+FILENAME_SPLIT_RE = re.compile(r"_")  # split on underscores
+
 
 def parse_timecourse_name(name: str):
     """
@@ -241,17 +245,18 @@ def parse_timecourse_name(name: str):
     (str, str, str, float)
         (plasmid, exp, rep, time)
     """
-    parts = FILENAME_SPLIT_RE.split(name)                       # token list
-    plasmid = parts[2] if len(parts) > 2 else ""                # plasmid token
-    exp     = parts[3] if len(parts) > 3 else ""                # experiment token
-    rep     = parts[4] if len(parts) > 4 else ""                # replicate token
-    time_s  = parts[5] if len(parts) > 5 else ""                # time token (string)
+    parts = FILENAME_SPLIT_RE.split(name)  # token list
+    plasmid = parts[2] if len(parts) > 2 else ""  # plasmid token
+    exp = parts[3] if len(parts) > 3 else ""  # experiment token
+    rep = parts[4] if len(parts) > 4 else ""  # replicate token
+    time_s = parts[5] if len(parts) > 5 else ""  # time token (string)
     try:
-        time = float(time_s)                                    # direct float cast
+        time = float(time_s)  # direct float cast
     except Exception:
-        m = re.search(r"(\d+(?:\.\d+)?)", time_s)               # fallback: first number
-        time = float(m.group(1)) if m else np.nan               # NaN if not found
-    return plasmid, exp, rep, time                              # return tuple
+        m = re.search(r"(\d+(?:\.\d+)?)", time_s)  # fallback: first number
+        time = float(m.group(1)) if m else np.nan  # NaN if not found
+    return plasmid, exp, rep, time  # return tuple
+
 
 # ----------------------------
 # Build Rev dataset
@@ -273,21 +278,22 @@ def load_rev_timecourse(mBFP_neg: float, mmCherry_neg: float) -> pd.DataFrame:
         Columns: [BV421-A, PE-A, plasmid, exp, rep, time]
     """
     med = load_flowset_medians("fcs_files/time-course_data").copy()  # load medians
-    print(f"[REV] medians (pre-subtraction) shape={med.shape}")      # debug
-    med[CH_BFP] = med[CH_BFP] - mBFP_neg                             # subtract BFP bg
-    med[CH_mCh] = med[CH_mCh] - mmCherry_neg                         # subtract mCh bg
+    print(f"[REV] medians (pre-subtraction) shape={med.shape}")  # debug
+    med[CH_BFP] = med[CH_BFP] - mBFP_neg  # subtract BFP bg
+    med[CH_mCh] = med[CH_mCh] - mmCherry_neg  # subtract mCh bg
     print(f"[REV] bg-sub preview:\n{med[[CH_BFP, CH_mCh]].head().to_string(index=False)}")  # preview
-    parsed = med["__filename"].apply(parse_timecourse_name).tolist() # parse tokens
+    parsed = med["__filename"].apply(parse_timecourse_name).tolist()  # parse tokens
     parsed_df = pd.DataFrame(parsed, columns=["plasmid", "exp", "rep", "time"])  # to frame
-    df = pd.concat([med[[CH_BFP, CH_mCh]], parsed_df], axis=1)       # combine data+meta
-    print(f"[REV] combined shape={df.shape}")                        # debug
-    df = df[df["exp"] == "Rev"].copy()                               # keep Rev experiments
-    print(f"[REV] after exp=='Rev': n={len(df)}")                    # debug
-    df["time"] = pd.to_numeric(df["time"], errors="coerce")          # numeric time
-    before = len(df)                                                 # count before dropna
-    df = df.dropna(subset=["time"])                                  # drop invalid times
+    df = pd.concat([med[[CH_BFP, CH_mCh]], parsed_df], axis=1)  # combine data+meta
+    print(f"[REV] combined shape={df.shape}")  # debug
+    df = df[df["exp"] == "Rev"].copy()  # keep Rev experiments
+    print(f"[REV] after exp=='Rev': n={len(df)}")  # debug
+    df["time"] = pd.to_numeric(df["time"], errors="coerce")  # numeric time
+    before = len(df)  # count before dropna
+    df = df.dropna(subset=["time"])  # drop invalid times
     print(f"[REV] dropped {before - len(df)} rows with non-numeric time")  # debug
-    return df                                                        # return Rev dataset
+    return df  # return Rev dataset
+
 
 # ----------------------------
 # Normalization: min-max scaled BFP per plasmid
@@ -310,23 +316,24 @@ def add_minmax_norm(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Input with added columns mean.final, mean.init, norm.bfp.
     """
-    mean_final = (                                              # per-plasmid final mean
+    mean_final = (  # per-plasmid final mean
         df.query("time > 10").groupby("plasmid")[CH_BFP]
-          .mean().rename("mean.final").reset_index()
+        .mean().rename("mean.final").reset_index()
     )
-    mean_init = (                                               # per-plasmid init mean
+    mean_init = (  # per-plasmid init mean
         df.query("time == 0").groupby("plasmid")[CH_BFP]
-          .mean().rename("mean.init").reset_index()
+        .mean().rename("mean.init").reset_index()
     )
     print(f"[norm] mean.final rows={len(mean_final)}, mean.init rows={len(mean_init)}")  # debug
-    out = df.merge(mean_final, on="plasmid", how="left")         # attach final mean
-    out = out.merge(mean_init, on="plasmid", how="left")         # attach init mean
+    out = df.merge(mean_final, on="plasmid", how="left")  # attach final mean
+    out = out.merge(mean_init, on="plasmid", how="left")  # attach init mean
     denom = (out["mean.init"] - out["mean.final"]).replace(0, np.nan)  # protect /0
-    out["norm.bfp"] = (out[CH_BFP] - out["mean.final"]) / denom # compute normalized BFP
-    print("[norm] preview:\n" +                                  # print small preview
+    out["norm.bfp"] = (out[CH_BFP] - out["mean.final"]) / denom  # compute normalized BFP
+    print("[norm] preview:\n" +  # print small preview
           out[["plasmid", "time", CH_BFP, "mean.init", "mean.final", "norm.bfp"]]
-             .head().to_string(index=False))
-    return out                                                   # return normalized table
+          .head().to_string(index=False))
+    return out  # return normalized table
+
 
 # ----------------------------
 # Model & fitting: y = exp(-t * ln(2) / t_half)
@@ -348,7 +355,7 @@ def exp_decay(t, t_half):
     np.ndarray
         Model values y(t).
     """
-    return np.exp(-t * (math.log(2.0) / t_half))                 # vectorized decay
+    return np.exp(-t * (math.log(2.0) / t_half))  # vectorized decay
 
 
 def fit_half_time(t, y, start=0.1):
@@ -374,17 +381,18 @@ def fit_half_time(t, y, start=0.1):
     RuntimeError
         If fewer than 3 finite points are available.
     """
-    t = np.asarray(t, float)                                     # ensure float array
-    y = np.asarray(y, float)                                     # ensure float array
-    m = np.isfinite(t) & np.isfinite(y)                          # finite mask
-    t, y = t[m], y[m]                                            # filtered pairs
-    print(f"[fit] points used: {len(t)}")                        # debug
-    if len(t) < 3:                                               # guard against underfit
+    t = np.asarray(t, float)  # ensure float array
+    y = np.asarray(y, float)  # ensure float array
+    m = np.isfinite(t) & np.isfinite(y)  # finite mask
+    t, y = t[m], y[m]  # filtered pairs
+    print(f"[fit] points used: {len(t)}")  # debug
+    if len(t) < 3:  # guard against underfit
         raise RuntimeError("Not enough points for decay fit.")
     popt, pcov = curve_fit(exp_decay, t, y, p0=[float(start)], maxfev=20000)  # NLS fit
-    se = float(np.sqrt(np.diag(pcov))[0]) if pcov is not None else np.nan     # SE of t_half
-    print(f"[fit] t_half={popt[0]:.6g}, SE={se:.3g}")            # debug
-    return float(popt[0]), se                                    # return estimate & SE
+    se = float(np.sqrt(np.diag(pcov))[0]) if pcov is not None else np.nan  # SE of t_half
+    print(f"[fit] t_half={popt[0]:.6g}, SE={se:.3g}")  # debug
+    return float(popt[0]), se  # return estimate & SE
+
 
 # ----------------------------
 # Plot helper (match R look)
@@ -403,59 +411,60 @@ def save_rev_plot(df: pd.DataFrame, t_half: float, out_pdf: str):
         Output PDF filename (saved in OUT_PATH).
     """
     tmin, tmax = float(df["time"].min()), float(df["time"].max())  # plotting range
-    curve = pd.DataFrame({"time": np.linspace(tmin, tmax, 200)})   # dense time grid
-    curve["fit"] = exp_decay(curve["time"], t_half)                # model predictions
-    p = (                                                          # build plot
-        ggplot(df, aes("time", "norm.bfp"))
-        + geom_point(size=0.4, alpha=0.7, color=POINT_COLOR)
-        + geom_line(data=curve, mapping=aes(x="time", y="fit"), color="black")
-        + coord_cartesian(ylim=(-0.15, 1.4))
-        + scale_y_continuous(breaks=[0, 0.25, 0.5, 0.75, 1.0])
-        + labs(x="Time (hours)", y="tagBFP (% of final)")
-        + THEME
+    curve = pd.DataFrame({"time": np.linspace(tmin, tmax, 200)})  # dense time grid
+    curve["fit"] = exp_decay(curve["time"], t_half)  # model predictions
+    p = (  # build plot
+            ggplot(df, aes("time", "norm.bfp"))
+            + geom_point(size=0.4, alpha=0.7, color=POINT_COLOR)
+            + geom_line(data=curve, mapping=aes(x="time", y="fit"), color="black")
+            + coord_cartesian(ylim=(-0.15, 1.4))
+            + scale_y_continuous(breaks=[0, 0.25, 0.5, 0.75, 1.0])
+            + labs(x="Time (hours)", y="tagBFP (% of final)")
+            + THEME
     )
-    out_path = os.path.join(OUT_PATH, out_pdf)                    # full output path
-    p.save(out_path, width=PLOT_W, height=PLOT_H, units="in")    # write PDF
-    print(f"[plot] saved: {out_path}")                            # debug
+    out_path = os.path.join(OUT_PATH, out_pdf)  # full output path
+    p.save(out_path, width=PLOT_W, height=PLOT_H, units="in")  # write PDF
+    print(f"[plot] saved: {out_path}")  # debug
+
 
 # ----------------------------
 # Main
 # ----------------------------
 def main():
     # 1) NFC background
-    mBFP_neg, mmCherry_neg = compute_nfc_background("fcs_files/NFC")   # get backgrounds
+    mBFP_neg, mmCherry_neg = compute_nfc_background("fcs_files/NFC")  # get backgrounds
     # 2) Load Rev time-course with background-subtracted medians
-    rev = load_rev_timecourse(mBFP_neg, mmCherry_neg)                  # build dataset
-    print(f"[REV] dataset rows={len(rev)}, cols={rev.shape[1]}")       # debug shape
+    rev = load_rev_timecourse(mBFP_neg, mmCherry_neg)  # build dataset
+    print(f"[REV] dataset rows={len(rev)}, cols={rev.shape[1]}")  # debug shape
     # 3) Min–max normalize per plasmid
-    rev = add_minmax_norm(rev)                                         # add norm.bfp
+    rev = add_minmax_norm(rev)  # add norm.bfp
     # 4) Fit per required plasmid & save plots
-    targets = [                                                         # (plasmid, pdf, label)
-        ("SP430ABA", "REV_SP430ABA_fitting.pdf",  "SP430A"),
-        ("SP430",    "REV_dCas9_fitting.pdf",     "SP430"),
-        ("SP428",    "REV_KRAB-dCas9_fitting.pdf","SP428"),
-        ("SP427",    "REV_HDAC4-dCas9_fitting.pdf","SP427"),
-        ("SP411",    "REV_CasRx_fitting.pdf",     "SP411"),
+    targets = [  # (plasmid, pdf, label)
+        ("SP430ABA", "REV_SP430ABA_fitting.pdf", "SP430A"),
+        ("SP430", "REV_dCas9_fitting.pdf", "SP430"),
+        ("SP428", "REV_KRAB-dCas9_fitting.pdf", "SP428"),
+        ("SP427", "REV_HDAC4-dCas9_fitting.pdf", "SP427"),
+        ("SP411", "REV_CasRx_fitting.pdf", "SP411"),
     ]
-    rows = []                                                           # collect results
-    for plasmid, pdfname, label in targets:                             # iterate targets
-        dfp = rev[rev["plasmid"] == plasmid].copy()                     # subset per plasmid
-        print(f"[target] {plasmid}: n={len(dfp)}")                      # debug n
-        if dfp.empty:                                                   # skip if no data
+    rows = []  # collect results
+    for plasmid, pdfname, label in targets:  # iterate targets
+        dfp = rev[rev["plasmid"] == plasmid].copy()  # subset per plasmid
+        print(f"[target] {plasmid}: n={len(dfp)}")  # debug n
+        if dfp.empty:  # skip if no data
             print(f"[WARN] No Rev data for {plasmid}; skipping.")
             continue
         t_half, se = fit_half_time(dfp["time"], dfp["norm.bfp"], start=0.1)  # fit decay
-        print(f"{label}: t1/2 = {t_half:.6g}  (SE={se:.3g})")           # concise result
-        rows.append({"plasmid": label, "halftime": t_half, "se": se})   # add to table
-        save_rev_plot(dfp, t_half, pdfname)                             # save plot
+        print(f"{label}: t1/2 = {t_half:.6g}  (SE={se:.3g})")  # concise result
+        rows.append({"plasmid": label, "halftime": t_half, "se": se})  # add to table
+        save_rev_plot(dfp, t_half, pdfname)  # save plot
     # 5) Save half-times
-    if rows:                                                            # if we have results
+    if rows:  # if we have results
         ht = pd.DataFrame(rows, columns=["plasmid", "halftime", "se"])  # build DataFrame
         out_csv = os.path.join(PARAM_PATH, "half_times_downregulation.csv")  # output path
-        ht.to_csv(out_csv, index=False)                                 # write csv
-        print("\nSaved:", out_csv)                                      # echo path
-        print(ht.to_string(index=False))                                # show table
-    else:                                                               # nothing fitted
+        ht.to_csv(out_csv, index=False)  # write csv
+        print("\nSaved:", out_csv)  # echo path
+        print(ht.to_string(index=False))  # show table
+    else:  # nothing fitted
         print("[WARN] No half-times estimated.")
 
 

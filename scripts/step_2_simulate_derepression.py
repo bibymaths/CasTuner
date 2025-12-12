@@ -50,6 +50,7 @@ Pipeline:
 """
 
 import os, re, glob, warnings
+
 warnings.filterwarnings("ignore")
 
 import numpy as np
@@ -66,24 +67,25 @@ from plotnine import (
 # ----------------------------
 # Config
 # ----------------------------
-OUT_PATH = "plots"                                   # directory for plots
-PARAM_PATH = "parameters"                            # directory for CSV outputs
-os.makedirs(OUT_PATH, exist_ok=True)                 # ensure plot dir exists
-os.makedirs(PARAM_PATH, exist_ok=True)               # ensure parameter dir exists
+OUT_PATH = "plots"  # directory for plots
+PARAM_PATH = "parameters"  # directory for CSV outputs
+os.makedirs(OUT_PATH, exist_ok=True)  # ensure plot dir exists
+os.makedirs(PARAM_PATH, exist_ok=True)  # ensure parameter dir exists
 
-CH_FSC_A = "FSC-A"                                   # forward scatter area
-CH_SSC_A = "SSC-A"                                   # side scatter area
-CH_FSC_H = "FSC-H"                                   # forward scatter height
-CH_BFP   = "BV421-A"                                 # tagBFP channel
-CH_mCh   = "PE-A"                                    # mCherry channel
+CH_FSC_A = "FSC-A"  # forward scatter area
+CH_SSC_A = "SSC-A"  # side scatter area
+CH_FSC_H = "FSC-H"  # forward scatter height
+CH_BFP = "BV421-A"  # tagBFP channel
+CH_mCh = "PE-A"  # mCherry channel
 
-BOUND_MIN = {CH_FSC_A: 0.4e5, CH_SSC_A: 0.20e5}      # lower rectangle gate
-BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}       # upper rectangle gate
-SINGLET_RATIO_LOW  = 0.85                            # FSC-H/FSC-A lower bound
-SINGLET_RATIO_HIGH = 1.15                            # FSC-H/FSC-A upper bound
+BOUND_MIN = {CH_FSC_A: 0.4e5, CH_SSC_A: 0.20e5}  # lower rectangle gate
+BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}  # upper rectangle gate
+SINGLET_RATIO_LOW = 0.85  # FSC-H/FSC-A lower bound
+SINGLET_RATIO_HIGH = 1.15  # FSC-H/FSC-A upper bound
 
-PLOT_W = 1.5 * 1.618                                 # plot width (inches)
-PLOT_H = 1.5                                         # plot height (inches)
+PLOT_W = 1.5 * 1.618  # plot width (inches)
+PLOT_H = 1.5  # plot height (inches)
+
 
 # ----------------------------
 # Helpers: gating & IO
@@ -102,13 +104,14 @@ def apply_boundary_gate(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Boundary-gated events (or original if gate yields 0).
     """
-    m = (                                              # within rectangle mask
-        (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
-        (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
+    m = (  # within rectangle mask
+            (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
+            (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
     )
-    sub = df.loc[m]                                    # apply mask
+    sub = df.loc[m]  # apply mask
     print(f"[gate] boundary: kept {len(sub):,}/{len(df):,}")  # debug
-    return sub if not sub.empty else df                # fallback to df if empty
+    return sub if not sub.empty else df  # fallback to df if empty
+
 
 def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -124,11 +127,12 @@ def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Singlet-gated events (or input if gate yields 0).
     """
-    ratio = df[CH_FSC_H] / df[CH_FSC_A].replace(0, np.nan)      # robust ratio
+    ratio = df[CH_FSC_H] / df[CH_FSC_A].replace(0, np.nan)  # robust ratio
     m = (ratio >= SINGLET_RATIO_LOW) & (ratio <= SINGLET_RATIO_HIGH)  # mask
-    sub = df.loc[m]                                             # apply mask
-    print(f"[gate] singlet : kept {len(sub):,}/{len(df):,}")    # debug
-    return sub if not sub.empty else df                         # fallback
+    sub = df.loc[m]  # apply mask
+    print(f"[gate] singlet : kept {len(sub):,}/{len(df):,}")  # debug
+    return sub if not sub.empty else df  # fallback
+
 
 def median_channels_for_file(fpath: str) -> pd.Series:
     """
@@ -149,17 +153,18 @@ def median_channels_for_file(fpath: str) -> pd.Series:
     ValueError
         If any required channel is missing.
     """
-    print(f"[read] {os.path.basename(fpath)}")                  # which file
+    print(f"[read] {os.path.basename(fpath)}")  # which file
     dat = FCMeasurement(ID=os.path.basename(fpath), datafile=fpath).data  # load events
-    print(f"[read] events={len(dat):,}, cols={len(dat.columns)}")         # size
-    for ch in (CH_FSC_A, CH_SSC_A, CH_FSC_H, CH_BFP, CH_mCh):             # verify channels
+    print(f"[read] events={len(dat):,}, cols={len(dat.columns)}")  # size
+    for ch in (CH_FSC_A, CH_SSC_A, CH_FSC_H, CH_BFP, CH_mCh):  # verify channels
         if ch not in dat.columns:
             raise ValueError(f"Missing channel '{ch}' in {fpath}")
-    gated = apply_singlet_gate(apply_boundary_gate(dat))        # boundary→singlet
-    med = gated.median(numeric_only=True)                       # channel medians
+    gated = apply_singlet_gate(apply_boundary_gate(dat))  # boundary→singlet
+    med = gated.median(numeric_only=True)  # channel medians
     print(f"[median] BFP~{med.get(CH_BFP, np.nan):.3g} | mCh~{med.get(CH_mCh, np.nan):.3g}")  # preview
     med["__filename"] = os.path.splitext(os.path.basename(fpath))[0]  # filename stem
-    return med                                                  # return series
+    return med  # return series
+
 
 def load_flowset_medians(folder: str) -> pd.DataFrame:
     """
@@ -180,14 +185,15 @@ def load_flowset_medians(folder: str) -> pd.DataFrame:
     FileNotFoundError
         If folder has no .fcs inputs.
     """
-    files = sorted(glob.glob(os.path.join(folder, "*.fcs")))    # enumerate files
-    print(f"[scan] {folder} → {len(files)} files")              # debug
+    files = sorted(glob.glob(os.path.join(folder, "*.fcs")))  # enumerate files
+    print(f"[scan] {folder} → {len(files)} files")  # debug
     if not files:
-        raise FileNotFoundError(f"No FCS in {folder}")          # guard
-    rows = [median_channels_for_file(f) for f in files]         # compute medians
-    out = pd.DataFrame(rows)                                    # to DataFrame
-    print(f"[table] medians shape={out.shape}")                 # debug
-    return out                                                  # table
+        raise FileNotFoundError(f"No FCS in {folder}")  # guard
+    rows = [median_channels_for_file(f) for f in files]  # compute medians
+    out = pd.DataFrame(rows)  # to DataFrame
+    print(f"[table] medians shape={out.shape}")  # debug
+    return out  # table
+
 
 def compute_nfc_background(nfc_dir: str):
     """
@@ -203,11 +209,12 @@ def compute_nfc_background(nfc_dir: str):
     (float, float)
         (mBFP_neg, mmCherry_neg) background medians.
     """
-    df = load_flowset_medians(nfc_dir).reset_index(drop=True)   # load NFC
-    mBFP_neg = df.loc[:2, CH_BFP].mean()                        # mean BFP (first 3)
-    mmCherry_neg = df.loc[:2, CH_mCh].mean()                    # mean mCh (first 3)
+    df = load_flowset_medians(nfc_dir).reset_index(drop=True)  # load NFC
+    mBFP_neg = df.loc[:2, CH_BFP].mean()  # mean BFP (first 3)
+    mmCherry_neg = df.loc[:2, CH_mCh].mean()  # mean mCh (first 3)
     print(f"[NFC] mBFP_neg={mBFP_neg:.6g}, mmCherry_neg={mmCherry_neg:.6g}")  # debug
-    return float(mBFP_neg), float(mmCherry_neg)                 # tuple
+    return float(mBFP_neg), float(mmCherry_neg)  # tuple
+
 
 # ----------------------------
 # Name parsing: *_*_*_*_*_*_*
@@ -226,17 +233,18 @@ def parse_name(name: str):
     (str, str, str, float)
         (plasmid, exp, rep, time)
     """
-    parts = name.split("_")                                     # split tokens
-    plasmid = parts[2] if len(parts) > 2 else ""                # plasmid token
-    exp     = parts[3] if len(parts) > 3 else ""                # experiment token
-    rep     = parts[4] if len(parts) > 4 else ""                # replicate token
-    time_s  = parts[5] if len(parts) > 5 else ""                # time token
+    parts = name.split("_")  # split tokens
+    plasmid = parts[2] if len(parts) > 2 else ""  # plasmid token
+    exp = parts[3] if len(parts) > 3 else ""  # experiment token
+    rep = parts[4] if len(parts) > 4 else ""  # replicate token
+    time_s = parts[5] if len(parts) > 5 else ""  # time token
     try:
-        t = float(time_s)                                       # direct cast
+        t = float(time_s)  # direct cast
     except Exception:
-        m = re.search(r"(\d+(\.\d+)?)", time_s)                 # fallback number
-        t = float(m.group(1)) if m else np.nan                  # NaN if none
-    return plasmid, exp, rep, t                                 # tuple
+        m = re.search(r"(\d+(\.\d+)?)", time_s)  # fallback number
+        t = float(m.group(1)) if m else np.nan  # NaN if none
+    return plasmid, exp, rep, t  # tuple
+
 
 # ----------------------------
 # Time course load (with background subtraction)
@@ -257,16 +265,17 @@ def load_timecourse_with_bg(mBFP_neg: float, mmCherry_neg: float) -> pd.DataFram
     pd.DataFrame
         Columns: BV421-A, PE-A, plasmid, exp, rep, time
     """
-    raw = load_flowset_medians("fcs_files/time-course_data")    # medians table
-    df = raw[[CH_BFP, CH_mCh, "__filename"]].copy()             # select needed columns
-    df[CH_BFP] = df[CH_BFP] - mBFP_neg                          # subtract BFP bg
-    df[CH_mCh] = df[CH_mCh] - mmCherry_neg                      # subtract mCh bg
+    raw = load_flowset_medians("fcs_files/time-course_data")  # medians table
+    df = raw[[CH_BFP, CH_mCh, "__filename"]].copy()  # select needed columns
+    df[CH_BFP] = df[CH_BFP] - mBFP_neg  # subtract BFP bg
+    df[CH_mCh] = df[CH_mCh] - mmCherry_neg  # subtract mCh bg
     print("[tc] bg-sub head:\n" + df[[CH_BFP, CH_mCh]].head().to_string(index=False))  # debug
-    parsed = df["__filename"].apply(parse_name)                 # parse tokens
-    meta = pd.DataFrame(parsed.tolist(), columns=["plasmid", "exp", "rep", "time"])    # to DataFrame
-    df = pd.concat([df.drop(columns="__filename"), meta], axis=1)                      # combine
-    print(f"[tc] combined shape={df.shape}")                     # debug
-    return df                                                   # return table
+    parsed = df["__filename"].apply(parse_name)  # parse tokens
+    meta = pd.DataFrame(parsed.tolist(), columns=["plasmid", "exp", "rep", "time"])  # to DataFrame
+    df = pd.concat([df.drop(columns="__filename"), meta], axis=1)  # combine
+    print(f"[tc] combined shape={df.shape}")  # debug
+    return df  # return table
+
 
 # ----------------------------
 # CasRx α (mCherry degradation) from REV SP411
@@ -291,7 +300,8 @@ def exp_recovery(t, t12, y0, yf):
     np.ndarray
         Modeled y(t).
     """
-    return yf + (y0 - yf) * np.exp(-t * (np.log(2)/t12))        # vectorized formula
+    return yf + (y0 - yf) * np.exp(-t * (np.log(2) / t12))  # vectorized formula
+
 
 def fit_alpha_from_casrx(REV: pd.DataFrame) -> float:
     """
@@ -312,24 +322,25 @@ def fit_alpha_from_casrx(REV: pd.DataFrame) -> float:
     RuntimeError
         If SP411 records are missing.
     """
-    sp = REV[REV["plasmid"] == "SP411"].copy()                  # filter SP411
+    sp = REV[REV["plasmid"] == "SP411"].copy()  # filter SP411
     if sp.empty:
-        raise RuntimeError("No SP411 in REV for alpha fitting") # guard
-    sp = sp.sort_values("time")                                 # ensure time order
-    t = sp["time"].to_numpy(float)                              # time vector
-    y = sp["fc.cherry"].to_numpy(float)                         # response vector
-    yf = 1.0                                                    # final level
-    y0 = float(sp.loc[sp["time"] == 0, "fc.cherry"].mean())     # initial level
-    print(f"[alpha] y0={y0:.6g}, yf={yf:.6g}, N={len(t)}")      # debug
+        raise RuntimeError("No SP411 in REV for alpha fitting")  # guard
+    sp = sp.sort_values("time")  # ensure time order
+    t = sp["time"].to_numpy(float)  # time vector
+    y = sp["fc.cherry"].to_numpy(float)  # response vector
+    yf = 1.0  # final level
+    y0 = float(sp.loc[sp["time"] == 0, "fc.cherry"].mean())  # initial level
+    print(f"[alpha] y0={y0:.6g}, yf={yf:.6g}, N={len(t)}")  # debug
     popt, _ = curve_fit(lambda tt, t12: exp_recovery(tt, t12, y0=y0, yf=yf),
-                        t, y, p0=[0.1], maxfev=20000)           # fit t12
-    t12_hat = float(popt[0])                                    # estimated half-time
-    alpha = float(np.log(2)/t12_hat)                            # convert to alpha
+                        t, y, p0=[0.1], maxfev=20000)  # fit t12
+    t12_hat = float(popt[0])  # estimated half-time
+    alpha = float(np.log(2) / t12_hat)  # convert to alpha
     print(f"[alpha] t1/2={t12_hat:.6g} h → alpha={alpha:.6g} 1/h")  # debug
-    pd.DataFrame({"alpha": [round(alpha, 3)]}).to_csv(          # save CSV
+    pd.DataFrame({"alpha": [round(alpha, 3)]}).to_csv(  # save CSV
         os.path.join(PARAM_PATH, "alphamcherry.csv"), index=False
     )
-    return alpha                                                # return alpha
+    return alpha  # return alpha
+
 
 # ----------------------------
 # Parameter load/merge
@@ -349,29 +360,30 @@ def load_parameters():
         If required columns are missing in any input CSV.
     """
     t_down = pd.read_csv(os.path.join(PARAM_PATH, "half_times_downregulation.csv"))  # load decay half-times
-    if "se" in t_down.columns: t_down = t_down.drop(columns=["se"])                  # drop SE if present
-    t_down = t_down.rename(columns={"halftime": "t_down"})                           # rename
+    if "se" in t_down.columns: t_down = t_down.drop(columns=["se"])  # drop SE if present
+    t_down = t_down.rename(columns={"halftime": "t_down"})  # rename
 
-    t_up = pd.read_csv(os.path.join(PARAM_PATH, "half_times_upregulation.csv"))      # load rise half-times
+    t_up = pd.read_csv(os.path.join(PARAM_PATH, "half_times_upregulation.csv"))  # load rise half-times
     if "se" in t_up.columns: t_up = t_up.drop(columns=["se"])
     t_up = t_up.rename(columns={"halftime": "t_up"})
 
-    hill = pd.read_csv(os.path.join(PARAM_PATH, "Hill_parameters.csv"))              # K, n
-    alpha = pd.read_csv(os.path.join(PARAM_PATH, "alphamcherry.csv"))                # alpha scalar
+    hill = pd.read_csv(os.path.join(PARAM_PATH, "Hill_parameters.csv"))  # K, n
+    alpha = pd.read_csv(os.path.join(PARAM_PATH, "alphamcherry.csv"))  # alpha scalar
 
     if "plasmid" not in t_down.columns or "plasmid" not in t_up.columns or "plasmid" not in hill.columns:
-        raise KeyError("t_down/t_up/Hill_parameters must have 'plasmid' column")     # schema guard
+        raise KeyError("t_down/t_up/Hill_parameters must have 'plasmid' column")  # schema guard
 
     df = t_down.merge(t_up, on="plasmid", how="outer").merge(hill, on="plasmid", how="outer")  # merge all
     if "plasmid" not in df.columns:
-        raise KeyError("Merged parameter table missing 'plasmid'")                   # sanity guard
+        raise KeyError("Merged parameter table missing 'plasmid'")  # sanity guard
     if "alpha" not in alpha.columns:
-        raise KeyError("alphamcherry.csv must have column 'alpha' (single value)")   # schema guard
+        raise KeyError("alphamcherry.csv must have column 'alpha' (single value)")  # schema guard
 
-    alpha_val = float(alpha["alpha"].iloc[0])                                        # extract scalar
-    df["alpha"] = alpha_val                                                          # broadcast to rows
-    print(f"[pars] merged shape={df.shape}; alpha={alpha_val:.6g}")                  # debug
-    return df                                                                         # parameters table
+    alpha_val = float(alpha["alpha"].iloc[0])  # extract scalar
+    df["alpha"] = alpha_val  # broadcast to rows
+    print(f"[pars] merged shape={df.shape}; alpha={alpha_val:.6g}")  # debug
+    return df  # parameters table
+
 
 # ----------------------------
 # REV transforms: fc.cherry & norm.bfp
@@ -397,29 +409,30 @@ def compute_rev_transforms(df: pd.DataFrame) -> pd.DataFrame:
     RuntimeError
         If Rev data or SP411@150 reference is missing.
     """
-    REV = df[df["exp"] == "Rev"].copy()                         # keep Rev only
+    REV = df[df["exp"] == "Rev"].copy()  # keep Rev only
     if REV.empty:
-        raise RuntimeError("No 'Rev' records in time-course")   # guard
+        raise RuntimeError("No 'Rev' records in time-course")  # guard
 
     sp411_150 = REV[(REV["plasmid"] == "SP411") & (REV["time"] == 150)]  # reference rows
     if sp411_150.empty:
         raise RuntimeError("No SP411 at 150h to define mCherry reference")  # guard
-    mmcherry = float(sp411_150[CH_mCh].mean())                  # reference mean
-    REV["fc.cherry"] = REV[CH_mCh] / mmcherry                   # compute fold change
-    print(f"[rev] mCherry ref (SP411@150h)={mmcherry:.6g}")     # debug
+    mmcherry = float(sp411_150[CH_mCh].mean())  # reference mean
+    REV["fc.cherry"] = REV[CH_mCh] / mmcherry  # compute fold change
+    print(f"[rev] mCherry ref (SP411@150h)={mmcherry:.6g}")  # debug
 
-    finals = (REV[REV["time"] > 10]                             # mean.final per plasmid
+    finals = (REV[REV["time"] > 10]  # mean.final per plasmid
               .groupby("plasmid")[CH_BFP]
               .mean().rename("mean.final").reset_index())
-    inits = (REV[REV["time"] == 0]                              # mean.init per plasmid
+    inits = (REV[REV["time"] == 0]  # mean.init per plasmid
              .groupby("plasmid")[CH_BFP]
              .mean().rename("mean.init").reset_index())
     REV = REV.merge(finals, on="plasmid", how="left").merge(inits, on="plasmid", how="left")  # attach means
     REV["norm.bfp"] = (REV[CH_BFP] - REV["mean.init"]) / (REV["mean.final"] - REV["mean.init"])  # min–max
-    print("[rev] transforms preview:\n" +                       # preview few rows
-          REV[["plasmid","time",CH_BFP,"mean.init","mean.final","norm.bfp","fc.cherry"]]
+    print("[rev] transforms preview:\n" +  # preview few rows
+          REV[["plasmid", "time", CH_BFP, "mean.init", "mean.final", "norm.bfp", "fc.cherry"]]
           .head().to_string(index=False))
-    return REV                                                  # return transformed table
+    return REV  # return transformed table
+
 
 # ----------------------------
 # ODE system and simulators
@@ -450,18 +463,19 @@ def rhs(y, t, t_down, K, n, alpha):
     list[float]
         Derivatives [dR, d(Y/alpha)].
     """
-    R, Y = float(y[0]), float(y[1])                             # unpack state
-    t_down = max(float(t_down), 1e-6)                           # avoid zero
-    K = max(float(K), 1e-12)                                    # avoid zero
-    n = max(float(n), 1e-6)                                     # avoid zero
-    alpha = max(float(alpha), 1e-12)                            # avoid zero
+    R, Y = float(y[0]), float(y[1])  # unpack state
+    t_down = max(float(t_down), 1e-6)  # avoid zero
+    K = max(float(K), 1e-12)  # avoid zero
+    n = max(float(n), 1e-6)  # avoid zero
+    alpha = max(float(alpha), 1e-12)  # avoid zero
 
-    Rpos = max(R, 0.0)                                          # nonnegative R
-    Kn = K**n                                                   # precompute
-    Rn = Rpos**n                                                # precompute
-    dR = -Rpos * (np.log(2) / t_down)                           # R decay
-    dY = (Kn)/(Kn + Rn) - Y * alpha                             # Y/alpha dynamics
-    return [dR, dY]                                             # derivatives
+    Rpos = max(R, 0.0)  # nonnegative R
+    Kn = K ** n  # precompute
+    Rn = Rpos ** n  # precompute
+    dR = -Rpos * (np.log(2) / t_down)  # R decay
+    dY = (Kn) / (Kn + Rn) - Y * alpha  # Y/alpha dynamics
+    return [dR, dY]  # derivatives
+
 
 def simulate_ode(R0: float, Y0: float, pars: pd.Series,
                  t0: float = 0.0, tmax: float = 150.0, step: float = 0.05,
@@ -496,19 +510,20 @@ def simulate_ode(R0: float, Y0: float, pars: pd.Series,
         Columns: time, R, Y
     """
     y0 = [max(float(R0), 0.0), max(float(Y0), 0.0) / float(pars["alpha"])]  # scaled ICs
-    t_eval = np.arange(t0, tmax + step/2, step)                   # time grid
+    t_eval = np.arange(t0, tmax + step / 2, step)  # time grid
     print(f"[ode] R0={R0:.4g}, Y0={Y0:.4g}, pars={dict(pars)}, delay={delay}")  # debug
 
-    sol = odeint(                                                 # integrate
+    sol = odeint(  # integrate
         rhs, y0, t_eval,
         args=(pars["t_down"], pars["K"], pars["n"], pars["alpha"]),
         atol=1e-10, rtol=1e-9,
     )
 
-    R = np.maximum(sol[:, 0], 0.0)                                # nonnegative R
-    Y = np.maximum(sol[:, 1] * float(pars["alpha"]), 0.0)         # rescale Y
+    R = np.maximum(sol[:, 0], 0.0)  # nonnegative R
+    Y = np.maximum(sol[:, 1] * float(pars["alpha"]), 0.0)  # rescale Y
     df = pd.DataFrame({"time": t_eval + float(delay), "R": R, "Y": Y})  # assemble
-    return df                                                     # series
+    return df  # series
+
 
 # ----------------------------
 # Delay scan MAE vs mean(fc.cherry by time)
@@ -533,46 +548,48 @@ def delay_scan(pl_df: pd.DataFrame, pars: dict, tmax=150.0, step=0.005):
     (pd.DataFrame, float|None, float|None, pd.DataFrame|None)
         (mae_table, best_delay, best_mae, shifted_sim_at_best)
     """
-    mean_fc = (pl_df.groupby("time")["fc.cherry"]                # mean per time
+    mean_fc = (pl_df.groupby("time")["fc.cherry"]  # mean per time
                .mean().rename("m_fc").reset_index().sort_values("time"))
-    delays = np.arange(0.0, 25.0 + 1e-9, 0.5)                    # scan grid
-    rows, best = [], (None, np.inf, None)                        # init best
+    delays = np.arange(0.0, 25.0 + 1e-9, 0.5)  # scan grid
+    rows, best = [], (None, np.inf, None)  # init best
 
-    R0 = float(pl_df.loc[pl_df["time"] == 0, "norm.bfp"].mean()) # initial R
-    Y0 = float(pl_df.loc[pl_df["time"] == 0, "fc.cherry"].mean())# initial Y
-    sim = simulate_ode(R0, Y0, pars, tmax=tmax, step=step)       # base sim
+    R0 = float(pl_df.loc[pl_df["time"] == 0, "norm.bfp"].mean())  # initial R
+    Y0 = float(pl_df.loc[pl_df["time"] == 0, "fc.cherry"].mean())  # initial Y
+    sim = simulate_ode(R0, Y0, pars, tmax=tmax, step=step)  # base sim
 
-    pchipY = PchipInterpolator(sim["time"].to_numpy(),           # monotone interp
+    pchipY = PchipInterpolator(sim["time"].to_numpy(),  # monotone interp
                                sim["Y"].to_numpy(), extrapolate=False)
 
-    for d in delays:                                             # iterate delays
-        sel = mean_fc["time"] >= d                               # valid rows
+    for d in delays:  # iterate delays
+        sel = mean_fc["time"] >= d  # valid rows
         if not np.any(sel):
             continue
-        t_data = mean_fc.loc[sel, "time"].to_numpy()             # observed times
-        t_query = t_data - d                                     # shift for model
-        in_dom  = (t_query >= sim["time"].iloc[0]) & (t_query <= sim["time"].iloc[-1])  # support
+        t_data = mean_fc.loc[sel, "time"].to_numpy()  # observed times
+        t_query = t_data - d  # shift for model
+        in_dom = (t_query >= sim["time"].iloc[0]) & (t_query <= sim["time"].iloc[-1])  # support
         if not np.any(in_dom):
             continue
 
-        y_pred = np.full_like(t_query, np.nan, dtype=float)      # alloc
-        y_pred[in_dom] = pchipY(t_query[in_dom])                 # predict
+        y_pred = np.full_like(t_query, np.nan, dtype=float)  # alloc
+        y_pred[in_dom] = pchipY(t_query[in_dom])  # predict
         df_cmp = pd.DataFrame({"time": t_data,
                                "m_fc": mean_fc.loc[sel, "m_fc"].to_numpy(),
                                "Y": y_pred}).dropna(subset=["Y"])  # compare
-        N = len(df_cmp)                                          # count
+        N = len(df_cmp)  # count
         if N <= 1:
             continue
         mae = (df_cmp["m_fc"] - df_cmp["Y"]).abs().sum() / (N - 1)  # MAE (R-like)
-        rows.append({"t": d, "MAE": mae})                        # record
+        rows.append({"t": d, "MAE": mae})  # record
 
-        if mae < best[1]:                                        # update best
-            shifted = sim.copy(); shifted["time"] = shifted["time"] + d
+        if mae < best[1]:  # update best
+            shifted = sim.copy();
+            shifted["time"] = shifted["time"] + d
             best = (d, mae, shifted)
 
-    mae_df = pd.DataFrame(rows)                                  # full table
+    mae_df = pd.DataFrame(rows)  # full table
     print(f"[delay] scanned {len(mae_df)} delays; best={best[0]} h, MAE={best[1]:.6g}")  # debug
-    return mae_df, best[0], best[1], best[2]                     # results
+    return mae_df, best[0], best[1], best[2]  # results
+
 
 # ----------------------------
 # Plot helpers
@@ -580,6 +597,7 @@ def delay_scan(pl_df: pd.DataFrame, pars: dict, tmax=150.0, step=0.005):
 def p_theme():
     """Return a clean, classic theme."""
     return theme_classic()
+
 
 def save_scatter_with_lines(df_pts, x, y, lines=None, fname="plot.pdf",
                             xlim=None, ylim=None, y_label="", x_label="Time (hours)"):
@@ -602,19 +620,20 @@ def save_scatter_with_lines(df_pts, x, y, lines=None, fname="plot.pdf",
         Axis labels.
     """
     p = (
-        ggplot(df_pts, aes(x=x, y=y))
-        + geom_point(size=0.6, alpha=0.4)
-        + labs(x=x_label, y=y_label)
-        + p_theme()
+            ggplot(df_pts, aes(x=x, y=y))
+            + geom_point(size=0.6, alpha=0.4)
+            + labs(x=x_label, y=y_label)
+            + p_theme()
     )
     if xlim or ylim:
-        p = p + coord_cartesian(xlim=xlim, ylim=ylim)            # set limits
+        p = p + coord_cartesian(xlim=xlim, ylim=ylim)  # set limits
     if lines is not None:
-        for (df_line, aes_y, lty) in lines:                      # add each line
+        for (df_line, aes_y, lty) in lines:  # add each line
             p = p + geom_line(data=df_line, mapping=aes(x="time", y=aes_y), linetype=lty)
-    out_path = os.path.join(OUT_PATH, fname)                     # build path
-    p.save(out_path, width=PLOT_W, height=PLOT_H, units="in")    # save plot
-    print(f"[plot] saved: {out_path}")                           # debug
+    out_path = os.path.join(OUT_PATH, fname)  # build path
+    p.save(out_path, width=PLOT_W, height=PLOT_H, units="in")  # save plot
+    print(f"[plot] saved: {out_path}")  # debug
+
 
 def save_mae_plot(mae_df, best_delay, fname, ylim=(0, 0.3)):
     """
@@ -632,23 +651,24 @@ def save_mae_plot(mae_df, best_delay, fname, ylim=(0, 0.3)):
         Y-axis limits.
     """
     if mae_df.empty:
-        print("[plot] MAE table empty; skipping MAE plot.")      # guard
+        print("[plot] MAE table empty; skipping MAE plot.")  # guard
         return
-    y_min = mae_df["MAE"].min()                                  # baseline line
+    y_min = mae_df["MAE"].min()  # baseline line
     p = (
-        ggplot(mae_df, aes(x="t", y="MAE"))
-        + geom_point(size=0.1, alpha=0.4)
-        + geom_point(data=mae_df[mae_df["t"] == best_delay], mapping=aes(x="t", y="MAE"),
-                     size=0.8, alpha=1.0)
-        + labs(x="Delay (hours)", y="MAE")
-        + coord_cartesian(xlim=(0, 25), ylim=ylim)
-        + p_theme()
+            ggplot(mae_df, aes(x="t", y="MAE"))
+            + geom_point(size=0.1, alpha=0.4)
+            + geom_point(data=mae_df[mae_df["t"] == best_delay], mapping=aes(x="t", y="MAE"),
+                         size=0.8, alpha=1.0)
+            + labs(x="Delay (hours)", y="MAE")
+            + coord_cartesian(xlim=(0, 25), ylim=ylim)
+            + p_theme()
     )
     p = p + geom_line(data=pd.DataFrame({"t": mae_df["t"], "MAE": y_min}),
                       mapping=aes(x="t", y="MAE"), linetype="dashed")  # min line
-    out_path = os.path.join(OUT_PATH, fname)                    # output path
-    p.save(out_path, width=PLOT_W, height=PLOT_H, units="in")   # save plot
-    print(f"[plot] saved: {out_path}")                          # debug
+    out_path = os.path.join(OUT_PATH, fname)  # output path
+    p.save(out_path, width=PLOT_W, height=PLOT_H, units="in")  # save plot
+    print(f"[plot] saved: {out_path}")  # debug
+
 
 # ----------------------------
 # Main
@@ -711,9 +731,9 @@ def main():
     delay_rows = []
     scans = [
         ("SP430A", "SP430ABA"),  # parameter label → data label
-        ("SP428",  "SP428"),
-        ("SP427",  "SP427"),
-        ("SP430",  "SP430"),
+        ("SP428", "SP428"),
+        ("SP427", "SP427"),
+        ("SP430", "SP430"),
     ]
     for pl_param, pl_data in scans:
         pars_row = all_par[all_par["plasmid"] == pl_param]
@@ -766,6 +786,7 @@ def main():
         print(pd.DataFrame(delay_rows).to_string(index=False))
     else:
         print("[WARN] No delays computed; no CSV written.")
+
 
 if __name__ == "__main__":
     main()

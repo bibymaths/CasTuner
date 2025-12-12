@@ -1,5 +1,10 @@
+# Configuration file for data processing pipeline
+# Specifies directories for input data, parameters, and output plots.
+# Indicates whether to start a fresh run.
 paths:
   nfc_dir: "fcs_files/NFC"
   timecourse_dir: "fcs_files/time-course_data"
   parameters: "parameters"
   plots: "plots"
+  scripts: "scripts"
+  fresh_run: true

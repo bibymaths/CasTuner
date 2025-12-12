@@ -55,7 +55,6 @@ Outputs:
 
 """
 
-
 import os, re, glob, warnings
 import numpy as np
 import pandas as pd
@@ -71,19 +70,19 @@ warnings.filterwarnings("ignore")
 # ----------------------------
 # Config
 # ----------------------------
-OUT_PATH = "plots"                               # directory for plot outputs
-PARAM_PATH = "parameters"                        # directory for parameter CSVs
-os.makedirs(OUT_PATH, exist_ok=True)             # ensure plot dir exists
-os.makedirs(PARAM_PATH, exist_ok=True)           # ensure parameter dir exists
+OUT_PATH = "plots"  # directory for plot outputs
+PARAM_PATH = "parameters"  # directory for parameter CSVs
+os.makedirs(OUT_PATH, exist_ok=True)  # ensure plot dir exists
+os.makedirs(PARAM_PATH, exist_ok=True)  # ensure parameter dir exists
 
-CH_FSC_A = "FSC-A"                               # forward scatter area
-CH_SSC_A = "SSC-A"                               # side scatter area
-CH_FSC_H = "FSC-H"                               # forward scatter height
-CH_BFP   = "BV421-A"                             # tagBFP channel
-CH_mCh   = "PE-A"                                # mCherry channel
+CH_FSC_A = "FSC-A"  # forward scatter area
+CH_SSC_A = "SSC-A"  # side scatter area
+CH_FSC_H = "FSC-H"  # forward scatter height
+CH_BFP = "BV421-A"  # tagBFP channel
+CH_mCh = "PE-A"  # mCherry channel
 
 BOUND_MIN = {CH_FSC_A: 0.4e5, CH_SSC_A: 0.20e5}  # lower gating bounds
-BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}   # upper gating bounds
+BOUND_MAX = {CH_FSC_A: 2.0e5, CH_SSC_A: 1.3e5}  # upper gating bounds
 SINGLET_RATIO_LOW, SINGLET_RATIO_HIGH = 0.85, 1.15  # singlet ratio window
 
 # plate-index → dTAG concentration (nM)
@@ -92,12 +91,14 @@ DTAG_MAP = {
     "7": 8, "8": 10, "9": 25, "10": 50, "11": 100, "12": 500
 }
 
-PLOT_W = 1.5 * 1.618                              # plot width (inches)
-PLOT_H = 1.5                                      # plot height (inches)
+PLOT_W = 1.5 * 1.618  # plot width (inches)
+PLOT_H = 1.5  # plot height (inches)
+
 
 def theme_castuner_like():
     """Return a clean plot theme resembling the original R plots."""
     return theme_classic()
+
 
 # ----------------------------
 # Gating helpers
@@ -117,12 +118,13 @@ def apply_boundary_gate(df: pd.DataFrame) -> pd.DataFrame:
         Subset of events within the rectangle gate.
     """
     m = (  # build mask within numeric limits
-        (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
-        (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
+            (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
+            (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
     )
-    out = df.loc[m]                                # filter events
+    out = df.loc[m]  # filter events
     print(f"[gate] boundary: kept {len(out):,}/{len(df):,}")  # debug
-    return out                                     # return gated events
+    return out  # return gated events
+
 
 def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -138,11 +140,12 @@ def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         Events passing the singlet gate.
     """
-    ratio = df[CH_FSC_H] / (df[CH_FSC_A].replace(0, np.nan))   # robust ratio
+    ratio = df[CH_FSC_H] / (df[CH_FSC_A].replace(0, np.nan))  # robust ratio
     m = (ratio >= SINGLET_RATIO_LOW) & (ratio <= SINGLET_RATIO_HIGH)  # in-window
-    out = df.loc[m]                                            # filter
-    print(f"[gate] singlet : kept {len(out):,}/{len(df):,}")   # debug
-    return out                                                 # singlets only
+    out = df.loc[m]  # filter
+    print(f"[gate] singlet : kept {len(out):,}/{len(df):,}")  # debug
+    return out  # singlets only
+
 
 def median_channels_for_file(fpath: str) -> pd.Series:
     """
@@ -163,24 +166,25 @@ def median_channels_for_file(fpath: str) -> pd.Series:
     ValueError
         If required channels are missing.
     """
-    print(f"[read] {os.path.basename(fpath)}")                 # which file
+    print(f"[read] {os.path.basename(fpath)}")  # which file
     sample = FCMeasurement(ID=os.path.basename(fpath), datafile=fpath).data  # read FCS
-    print(f"[read] events={len(sample):,}, cols={len(sample.columns)}")      # size
+    print(f"[read] events={len(sample):,}, cols={len(sample.columns)}")  # size
     for ch in (CH_FSC_A, CH_SSC_A, CH_FSC_H, CH_BFP, CH_mCh):  # channel check
         if ch not in sample.columns:
             raise ValueError(f"Channel '{ch}' not found in: {fpath}")
-    gated = apply_boundary_gate(sample)                        # boundary gate
-    if len(gated) == 0:                                        # fallback
+    gated = apply_boundary_gate(sample)  # boundary gate
+    if len(gated) == 0:  # fallback
         print("[gate] boundary empty → using raw sample")
         gated = sample
-    singlets = apply_singlet_gate(gated)                       # singlet gate
-    if len(singlets) == 0:                                     # fallback
+    singlets = apply_singlet_gate(gated)  # singlet gate
+    if len(singlets) == 0:  # fallback
         print("[gate] singlet empty  → using boundary-gated")
         singlets = gated
-    s = singlets.median(numeric_only=True)                     # medians
+    s = singlets.median(numeric_only=True)  # medians
     print(f"[median] BFP~{s.get(CH_BFP, np.nan):.3g} | mCh~{s.get(CH_mCh, np.nan):.3g}")  # preview
     s["__filename"] = os.path.splitext(os.path.basename(fpath))[0]  # filename stem
-    return s                                                   # return series
+    return s  # return series
+
 
 def load_flowset_medians(folder: str) -> pd.DataFrame:
     """
@@ -201,13 +205,14 @@ def load_flowset_medians(folder: str) -> pd.DataFrame:
     FileNotFoundError
         If no .fcs files were found.
     """
-    files = sorted(glob.glob(os.path.join(folder, "*.fcs")))   # discover FCS files
-    print(f"[scan] {folder} → {len(files)} files")             # debug
-    if not files:                                              # guard
+    files = sorted(glob.glob(os.path.join(folder, "*.fcs")))  # discover FCS files
+    print(f"[scan] {folder} → {len(files)} files")  # debug
+    if not files:  # guard
         raise FileNotFoundError(f"No FCS files found in: {folder}")
     out = pd.DataFrame([median_channels_for_file(f) for f in files])  # compute medians
-    print(f"[table] medians shape={out.shape}")                # debug
-    return out                                                 # return table
+    print(f"[table] medians shape={out.shape}")  # debug
+    return out  # return table
+
 
 # ----------------------------
 # Background subtraction (NFC)
@@ -226,17 +231,19 @@ def compute_nfc_background(nfc_dir: str):
     (float, float)
         Tuple (mBFP_neg, mmCherry_neg).
     """
-    df = load_flowset_medians(nfc_dir)                         # NFC medians
+    df = load_flowset_medians(nfc_dir)  # NFC medians
     print(f"[NFC] files={len(df)}; using first 3 for background")  # debug
-    mBFP_neg = float(df.iloc[:3][CH_BFP].mean())               # BFP background
-    mmCherry_neg = float(df.iloc[:3][CH_mCh].mean())           # mCherry background
+    mBFP_neg = float(df.iloc[:3][CH_BFP].mean())  # BFP background
+    mmCherry_neg = float(df.iloc[:3][CH_mCh].mean())  # mCherry background
     print(f"[NFC] mBFP_neg={mBFP_neg:.6g}, mmCherry_neg={mmCherry_neg:.6g}")  # debug
-    return mBFP_neg, mmCherry_neg                              # return tuple
+    return mBFP_neg, mmCherry_neg  # return tuple
+
 
 # ----------------------------
 # Filename parsing
 # ----------------------------
-FILENAME_SPLIT_RE = re.compile(r"_")                           # underscore splitter
+FILENAME_SPLIT_RE = re.compile(r"_")  # underscore splitter
+
 
 def parse_filename_tokens(name: str):
     """
@@ -252,13 +259,14 @@ def parse_filename_tokens(name: str):
     (str, str, str)
         (plasmid, guide, dtag_idx_token)
     """
-    parts = FILENAME_SPLIT_RE.split(name)                      # tokens
-    plasmid = parts[0] if len(parts) > 0 else ""               # plasmid code
-    guide   = parts[1] if len(parts) > 1 else ""               # guide label 'G'/'N'
-    dtag_token = parts[2] if len(parts) > 2 else ""            # token like 'dTAG11'
-    m = re.search(r"([A-Za-z]+)(\d+)$", dtag_token)            # split alpha+digits
-    dtag_idx = m.group(2) if m else dtag_token                 # keep index digits
-    return plasmid, guide, dtag_idx                            # return tokens
+    parts = FILENAME_SPLIT_RE.split(name)  # tokens
+    plasmid = parts[0] if len(parts) > 0 else ""  # plasmid code
+    guide = parts[1] if len(parts) > 1 else ""  # guide label 'G'/'N'
+    dtag_token = parts[2] if len(parts) > 2 else ""  # token like 'dTAG11'
+    m = re.search(r"([A-Za-z]+)(\d+)$", dtag_token)  # split alpha+digits
+    dtag_idx = m.group(2) if m else dtag_token  # keep index digits
+    return plasmid, guide, dtag_idx  # return tokens
+
 
 # ----------------------------
 # Load replicate
@@ -281,18 +289,19 @@ def load_replicate(folder: str, mBFP_neg: float, mmCherry_neg: float) -> pd.Data
     pd.DataFrame
         Columns: [BV421-A, PE-A, plasmid, guide, dTAG]
     """
-    raw = load_flowset_medians(folder).copy()                  # per-file medians
-    print(f"[rep] {folder} shape={raw.shape}")                 # debug
-    raw[CH_BFP] = raw[CH_BFP] - mBFP_neg                       # subtract BFP background
-    raw[CH_mCh] = raw[CH_mCh] - mmCherry_neg                   # subtract mCh background
+    raw = load_flowset_medians(folder).copy()  # per-file medians
+    print(f"[rep] {folder} shape={raw.shape}")  # debug
+    raw[CH_BFP] = raw[CH_BFP] - mBFP_neg  # subtract BFP background
+    raw[CH_mCh] = raw[CH_mCh] - mmCherry_neg  # subtract mCh background
     print(f"[rep] bg-sub head:\n{raw[[CH_BFP, CH_mCh]].head().to_string(index=False)}")  # preview
     parsed = raw["__filename"].apply(parse_filename_tokens).tolist()  # parse tokens
-    parsed_df = pd.DataFrame(parsed, columns=["plasmid", "guide", "dTAG_token"])         # to frame
-    df = pd.concat([raw[[CH_BFP, CH_mCh]], parsed_df], axis=1) # combine
+    parsed_df = pd.DataFrame(parsed, columns=["plasmid", "guide", "dTAG_token"])  # to frame
+    df = pd.concat([raw[[CH_BFP, CH_mCh]], parsed_df], axis=1)  # combine
     df["dTAG"] = df["dTAG_token"].map(DTAG_MAP).astype(float)  # map to concentration
-    df = df.drop(columns=["dTAG_token"])                       # drop helper
-    print(f"[rep] combined shape={df.shape}")                   # debug
-    return df                                                  # return replicate table
+    df = df.drop(columns=["dTAG_token"])  # drop helper
+    print(f"[rep] combined shape={df.shape}")  # debug
+    return df  # return replicate table
+
 
 # ----------------------------
 # Hill model
@@ -316,7 +325,8 @@ def hill_func(R, K, n):
     np.ndarray
         Predicted normalized reporter level.
     """
-    return (K**n) / (K**n + np.power(R, n))                    # vectorized equation
+    return (K ** n) / (K ** n + np.power(R, n))  # vectorized equation
+
 
 def fit_hill(R_vals, y_vals, start=(0.1, 1.0)):
     """
@@ -341,17 +351,18 @@ def fit_hill(R_vals, y_vals, start=(0.1, 1.0)):
     RuntimeError
         If fewer than 3 finite data points are available.
     """
-    R_vals = np.asarray(R_vals, dtype=float)                   # to float array
-    y_vals = np.asarray(y_vals, dtype=float)                   # to float array
-    m = np.isfinite(R_vals) & np.isfinite(y_vals)              # finite mask
-    R_vals, y_vals = R_vals[m], y_vals[m]                      # filter
-    print(f"[fit] hill points used: {len(R_vals)}")            # debug
-    if len(R_vals) < 3:                                        # guard
+    R_vals = np.asarray(R_vals, dtype=float)  # to float array
+    y_vals = np.asarray(y_vals, dtype=float)  # to float array
+    m = np.isfinite(R_vals) & np.isfinite(y_vals)  # finite mask
+    R_vals, y_vals = R_vals[m], y_vals[m]  # filter
+    print(f"[fit] hill points used: {len(R_vals)}")  # debug
+    if len(R_vals) < 3:  # guard
         raise RuntimeError("Not enough points for Hill fit.")
-    popt, pcov = curve_fit(hill_func, R_vals, y_vals,          # LM fit (like nlsLM)
+    popt, pcov = curve_fit(hill_func, R_vals, y_vals,  # LM fit (like nlsLM)
                            p0=np.array(start, float), maxfev=20000)
-    print(f"[fit] K={popt[0]:.6g}, n={popt[1]:.6g}")           # debug
-    return popt, pcov                                          # params + covariance
+    print(f"[fit] K={popt[0]:.6g}, n={popt[1]:.6g}")  # debug
+    return popt, pcov  # params + covariance
+
 
 def save_hill_plot(df: pd.DataFrame, fit_params, out_pdf: str):
     """
@@ -366,22 +377,23 @@ def save_hill_plot(df: pd.DataFrame, fit_params, out_pdf: str):
     out_pdf : str
         Output PDF filename (saved under OUT_PATH).
     """
-    K, n = fit_params                                          # unpack params
+    K, n = fit_params  # unpack params
     tmin, tmax = float(df["norm.bfp"].min()), float(df["norm.bfp"].max())  # x-range
-    curve = pd.DataFrame({"norm.bfp": np.linspace(tmin, tmax, 200)})       # grid
-    curve["fc_fit"] = hill_func(curve["norm.bfp"], K, n)       # predictions
-    p = (                                                      # build plot
-        ggplot(df, aes("norm.bfp", "fc"))
-        + geom_point(size=0.8, alpha=0.4)
-        + geom_line(data=curve, mapping=aes(x="norm.bfp", y="fc_fit"))
-        + coord_cartesian(ylim=(0, 1))
-        + labs(x="Normalized repressor level", y="Normalized reporter level")
-        + scale_y_continuous()
-        + theme_castuner_like()
+    curve = pd.DataFrame({"norm.bfp": np.linspace(tmin, tmax, 200)})  # grid
+    curve["fc_fit"] = hill_func(curve["norm.bfp"], K, n)  # predictions
+    p = (  # build plot
+            ggplot(df, aes("norm.bfp", "fc"))
+            + geom_point(size=0.8, alpha=0.4)
+            + geom_line(data=curve, mapping=aes(x="norm.bfp", y="fc_fit"))
+            + coord_cartesian(ylim=(0, 1))
+            + labs(x="Normalized repressor level", y="Normalized reporter level")
+            + scale_y_continuous()
+            + theme_castuner_like()
     )
-    out_path = os.path.join(OUT_PATH, out_pdf)                 # destination
+    out_path = os.path.join(OUT_PATH, out_pdf)  # destination
     p.save(out_path, width=PLOT_W, height=PLOT_H, units="in")  # write PDF
-    print(f"[plot] saved: {out_path}")                         # debug
+    print(f"[plot] saved: {out_path}")  # debug
+
 
 # ----------------------------
 # Main
@@ -449,10 +461,10 @@ def main():
     # Fit & plot per plasmid
     records = []
     targets = [
-        ("430",    "Hill_dCas9.pdf",            "SP430"),
-        ("411",    "Hill_CasRx.pdf",            "SP411"),
-        ("427",    "Hill-HDAC4-dCas9.pdf",      "SP427"),
-        ("428",    "Hill-KRAB-dCas9.pdf",       "SP428"),
+        ("430", "Hill_dCas9.pdf", "SP430"),
+        ("411", "Hill_CasRx.pdf", "SP411"),
+        ("427", "Hill-HDAC4-dCas9.pdf", "SP427"),
+        ("428", "Hill-KRAB-dCas9.pdf", "SP428"),
         ("430ABA", "Hill-KRAB-Split-dCas9.pdf", "SP430A"),
     ]
 
@@ -483,6 +495,7 @@ def main():
         print(params_df.to_string(index=False))
     else:
         print("[WARN] No parameters estimated; no CSV written.")
+
 
 if __name__ == "__main__":
     main()
