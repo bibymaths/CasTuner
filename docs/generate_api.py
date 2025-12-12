@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
 
-# Root of the repository (one level above docs/)
+# Root of the repository
 ROOT = Path(__file__).resolve().parents[1]
 
-SCRIPTS_DIR = ROOT / "scripts"   # ← your scripts/ folder
-API_DIR = Path("docs/api")       # final markdown will be placed here
+SCRIPTS_DIR = ROOT / "scripts"
+API_DIR = Path("docs/api")       # final Markdown will be placed here
 
 API_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -13,8 +13,6 @@ API_DIR.mkdir(parents=True, exist_ok=True)
 def python_modules(base=SCRIPTS_DIR):
     """
     Yield dotted Python module paths for all .py files in scripts/.
-    Example:
-        scripts/step_1a_fit_upregulation.py → scripts.step_1a_fit_upregulation
     """
     for root, dirs, files in os.walk(base):
         for f in files:
