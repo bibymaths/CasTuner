@@ -1,0 +1,60 @@
+site_name: CasTuner Python Port
+site_description: "A full Python re-implementation of CasTuner modelling, ODE inference, kinetic fitting, and design-space exploration."
+site_author: Abhinav Mishra
+repo_url: https://github.com/bibymaths/CasTuner
+repo_name: GitHub
+
+theme:
+  name: readthedocs
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.snippets
+  - pymdownx.arithmatex:
+      generic: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          import:
+            - https://docs.python.org/3/objects.inv
+          options:
+            show_source: true
+            show_root_full_path: false
+            separate_signature: true
+            members_order: alphabetical
+  - gen-files:
+      scripts:
+        - docs/generate_api.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Biological Problem: biological_problem.md
+  - Data & Experiments: data_experiments.md
+  - Pipeline:
+      - Overview: pipeline_overview.md
+      - Step 1 – Kinetics: step1_kinetics.md
+      - Step 2 – Hill Curves: step2_hill.md
+      - Step 3 – ODE Modelling: step3_ode.md
+      - Step 4 – Noise Analysis: step4_noise.md
+      - Step 5 – Design Scan: step5_design_scan.md
+      - Step 6 – Goodness of Fit: step6_gof.md
+      - Step 7 – Design Selection: step7_selection.md
+  - Reproducibility: reproducibility.md
+  - References: references.md
+  - API Reference: api/index.md
