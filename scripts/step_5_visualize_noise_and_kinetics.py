@@ -25,6 +25,7 @@ Requires input CSV files in "parameters/" directory:
 
 import os
 from pathlib import Path
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -81,7 +82,7 @@ def labeled_scatter(ax, x, y, labels, xlabel, ylabel, title):
 # ---------------------------------------------------------------------
 # Load all parameter / noise tables
 # ---------------------------------------------------------------------
-def load_tables():
+def load_tables() -> Dict[str, pd.DataFrame]:
     """
     Load all required CSV tables into a dictionary of DataFrames.
 
