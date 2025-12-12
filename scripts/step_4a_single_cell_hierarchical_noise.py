@@ -28,13 +28,6 @@ warnings.filterwarnings("ignore")
 # -----------------------------------------------------------------------------
 # Paths and config
 # -----------------------------------------------------------------------------
-# Base directory for all Python-generated results
-# BASE_PATH   = "Python_results"
-
-# Inside Python_results/
-# OUT_PATH    = os.path.join(BASE_PATH, "plots")
-# PARAM_PATH  = os.path.join(BASE_PATH, "parameters")
-
 OUT_PATH = "plots"
 PARAM_PATH = "parameters"
 
@@ -42,11 +35,10 @@ PARAM_PATH = "parameters"
 FCS_TC_DIR = os.path.join("fcs_files", "time-course_data")
 FCS_NFC_DIR = os.path.join("fcs_files", "NFC")
 
-# (Optional) ensure result dirs exist
 os.makedirs(OUT_PATH, exist_ok=True)
 os.makedirs(PARAM_PATH, exist_ok=True)
 
-# Channels (match existing scripts)
+# Channels
 CH_FSC_A = "FSC-A"
 CH_SSC_A = "SSC-A"
 CH_FSC_H = "FSC-H"
@@ -60,11 +52,24 @@ SINGLET_RATIO_LOW, SINGLET_RATIO_HIGH = 0.85, 1.15
 
 _SPLIT = re.compile(r"_")
 
-
 # -----------------------------------------------------------------------------
-# Gating + NFC background – identical logic to your kinetic scripts
+# Gating + NFC background
 # -----------------------------------------------------------------------------
 def apply_boundary_gate(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Apply boundary gate on FSC-A and SSC-A.
+    If no events pass, return raw data.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Flow cytometry events.
+
+    Returns
+    -------
+    pd.DataFrame
+        Gated events.
+    """
     m = (
             (df[CH_FSC_A] >= BOUND_MIN[CH_FSC_A]) & (df[CH_FSC_A] <= BOUND_MAX[CH_FSC_A]) &
             (df[CH_SSC_A] >= BOUND_MIN[CH_SSC_A]) & (df[CH_SSC_A] <= BOUND_MAX[CH_SSC_A])
@@ -77,6 +82,20 @@ def apply_boundary_gate(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Apply singlet gate based on FSC-H / FSC-A ratio.
+    If no events pass, return raw data.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Flow cytometry events.
+
+    Returns
+    -------
+    pd.DataFrame
+        Gated events.
+    """
     ratio = df[CH_FSC_H] / df[CH_FSC_A].replace(0, np.nan)
     m = (ratio >= SINGLET_RATIO_LOW) & (ratio <= SINGLET_RATIO_HIGH)
     out = df.loc[m]
@@ -86,6 +105,17 @@ def apply_singlet_gate(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_nfc_background(nfc_dir: str) -> Tuple[float, float]:
+    """
+    Compute NFC background medians for BFP and mCherry.
+    Parameters
+    ----------
+    nfc_dir : str
+        Directory containing NFC .fcs files.
+    Returns
+    -------
+    Tuple[float, float]
+        (mBFP_neg, mmCherry_neg)
+    """
     files = sorted(glob.glob(os.path.join(nfc_dir, "*.fcs")))
     if not files:
         raise FileNotFoundError(f"No NFC .fcs files in {nfc_dir}")
@@ -96,7 +126,6 @@ def compute_nfc_background(nfc_dir: str) -> Tuple[float, float]:
         med = gated.median(numeric_only=True)
         rows.append(med)
     df = pd.DataFrame(rows).reset_index(drop=True)
-    # Match existing logic: use first 3 medians
     mBFP_neg = float(df.loc[:2, CH_BFP].mean())
     mmCherry_neg = float(df.loc[:2, CH_mCh].mean())
     return mBFP_neg, mmCherry_neg
@@ -106,7 +135,7 @@ def parse_timecourse_name(name: str):
     """
     Extract (plasmid, exp, rep, time) from filename stem.
 
-    Expected pattern (as in Steps 2–3):
+    Expected pattern:
       <prefix>_<prefix>_<plasmid>_<exp>_<rep>_<time>[_...]
     """
     parts = _SPLIT.split(name)
@@ -195,6 +224,12 @@ def summarize_noise_per_group(events: pd.DataFrame) -> pd.DataFrame:
     """
     Compute noise metrics per (plasmid, exp, rep, time).
 
+    Parameters
+    ----------
+    events : pd.DataFrame
+        Single-cell events with columns:
+          plasmid, exp, rep, time, BFP, mCherry
+
     Returns
     -------
     pd.DataFrame with columns:
@@ -205,6 +240,18 @@ def summarize_noise_per_group(events: pd.DataFrame) -> pd.DataFrame:
     """
 
     def _stats(x: pd.Series):
+        """
+        Compute mean, variance, CV² for a series.
+
+        Parameters
+        ----------
+        x : pd.Series
+            Numeric values.
+        Returns
+        -------
+        Tuple[float, float, float]
+            (mean, variance, CV²)
+        """
         m = float(x.mean())
         v = float(x.var(ddof=1)) if len(x) > 1 else 0.0
         cv2 = (v / (m ** 2)) if m > 0 else np.nan
@@ -237,18 +284,23 @@ def hierarchical_summary(noise_df: pd.DataFrame) -> pd.DataFrame:
     """
     For each plasmid (and exp), compute pooled noise metrics and uncertainty.
 
-    We treat per-(rep,time) summaries as noisy observations of a latent construct-
-    specific mean. For each metric X (e.g. cv2_mCherry), we compute:
+    Parameters
+    ----------
+    noise_df : pd.DataFrame
+        Per-(plasmid, exp, rep, time) noise metrics with columns:
+          plasmid, exp, rep, time,
+          mean_BFP, var_BFP, cv2_BFP,
+          mean_mCherry, var_mCherry, cv2_mCherry,
+          n_cells
 
-        X_bar      = mean(X_i)
-        s_between  = std(X_i)
-        se         = s_between / sqrt(n_groups)
-        CI_95_low  = X_bar - 1.96 * se
-        CI_95_high = X_bar + 1.96 * se
-
-    This is a pragmatic approximation that already gives you:
-      • per-construct noise estimates
-      • uncertainty intervals suitable for figures and model comparison.
+    Returns
+    -------
+    pd.DataFrame with columns:
+      plasmid, exp, n_groups,
+      mean_BFP, mean_BFP_se, mean_BFP_ci_low, mean_BFP_ci_high,
+      mean_mCherry, mean_mCherry_se, mean_mCherry_ci_low, mean_mCherry_ci_high,
+      cv2_BFP, cv2_BFP_se, cv2_BFP_ci_low, cv2_BFP_ci_high,
+      cv2_mCherry, cv2_mCherry_se, cv2_mCherry_ci_low, cv2_mCherry_ci_high
     """
     metrics = ["cv2_BFP", "cv2_mCherry", "mean_BFP", "mean_mCherry"]
     rows = []

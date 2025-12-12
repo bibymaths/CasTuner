@@ -519,8 +519,29 @@ def simulate_ode(R0: float, Y0: float, pars: pd.Series,
                  t0: float = 0.0, tmax: float = 150.0, step: float = 0.05,
                  delay: float = 0.0) -> pd.DataFrame:
     """
-    Robust adapter for Step 6 compatibility.
-    Unpacks parameters, handles casing ('K' vs 'k'), and skips bad rows.
+    Simulate the repression ODE system for given parameters and return results.
+
+    Parameters
+    ----------
+    R0 : float
+        Initial R value (not used; always 0).
+    Y0 : float
+        Initial Y value (not used; always 1/alpha).
+    pars : pd.Series
+        Parameter row with fields (t_up, k/K, n, alpha).
+    t0 : float, optional
+        Start time (hours), by default 0.0.
+    tmax : float, optional
+        End time (hours), by default 150.0.
+    step : float, optional
+        Time step for output (hours), by default 0.05.
+    delay : float, optional
+        Time delay to add to output time (hours), by default 0.0.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with columns ['time', 'R', 'Y'].
     """
 
     # 1. Helper to safely get parameters regardless of casing

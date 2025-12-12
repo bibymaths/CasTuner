@@ -39,6 +39,13 @@ OUT_PATH = PLOTS_ROOT / "noise_kinetics"
 
 
 def ensure_outdir(path: Path) -> None:
+    """
+    Ensure output directory exists.
+
+    Args:
+        path (Path): Path to the output directory.
+    """
+
     path.mkdir(parents=True, exist_ok=True)
 
 
@@ -75,6 +82,21 @@ def labeled_scatter(ax, x, y, labels, xlabel, ylabel, title):
 # Load all parameter / noise tables
 # ---------------------------------------------------------------------
 def load_tables():
+    """
+    Load all required CSV tables into a dictionary of DataFrames.
+
+    1. Hill parameters
+    2. Half-times upregulation
+    3. Half-times downregulation
+    4. Alpha values
+    5. Delays derepression
+    6. Delays repression
+    7. Single-cell noise time series
+    8. Single-cell noise hierarchical
+
+    Returns:
+        dict: Dictionary of DataFrames keyed by table name.
+    """
     hill = pd.read_csv(PARAM_PATH / "Hill_parameters.csv")  # plasmid, K, n
     up = pd.read_csv(PARAM_PATH / "half_times_upregulation.csv")  # plasmid, halftime, se
     down = pd.read_csv(PARAM_PATH / "half_times_downregulation.csv")  # plasmid, halftime, se
@@ -105,12 +127,11 @@ def make_noise_hier_long(noise_hier_raw: pd.DataFrame) -> pd.DataFrame:
     Build a long-format table with explicit 'channel' from the wide
     single_cell_noise_hierarchical.csv.
 
-    Expects columns:
-      plasmid, exp, n_groups,
-      cv2_BFP, cv2_BFP_se, cv2_BFP_ci_low, cv2_BFP_ci_high,
-      cv2_mCherry, cv2_mCherry_se, cv2_mCherry_ci_low, cv2_mCherry_ci_high,
-      mean_BFP, mean_BFP_se, mean_BFP_ci_low, mean_BFP_ci_high,
-      mean_mCherry, mean_mCherry_se, mean_mCherry_ci_low, mean_mCherry_ci_high
+    Args:
+        noise_hier_raw (pd.DataFrame): Raw hierarchical noise DataFrame.
+
+    Returns:
+        pd.DataFrame: Long-format hierarchical noise DataFrame.
     """
     records = []
     for _, row in noise_hier_raw.iterrows():
@@ -318,7 +339,7 @@ def plot_noise_hier_summary(noise_hier_long: pd.DataFrame, out_path: Path) -> No
 
 
 # ---------------------------------------------------------------------
-# 6. Noise vs kinetic parameters (design-guided view)
+# 6. Noise vs kinetic parameters
 # ---------------------------------------------------------------------
 def plot_noise_vs_kinetics(noise_hier_long: pd.DataFrame,
                            hill: pd.DataFrame,
@@ -327,6 +348,7 @@ def plot_noise_vs_kinetics(noise_hier_long: pd.DataFrame,
                            delays_rep: pd.DataFrame,
                            out_path: Path) -> None:
     # Focus on mCherry channel for noise–kinetic links
+    # (as it's the regulated reporter)
     hier_mc = noise_hier_long[noise_hier_long["channel"] == "mCherry"].copy()
     hier_mc = hier_mc.rename(columns={"cv2": "cv2_mCherry"})
 

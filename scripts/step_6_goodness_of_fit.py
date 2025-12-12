@@ -71,7 +71,11 @@ def mae(y_true, y_pred):
 # ---------------------------------------------------------------------
 def build_hill_dataset():
     """
-    Rebuild the day-4 dose–response dataset (matches step_1c.main).
+    Rebuild the day-4 dose–response dataset.
+
+    Returns a DataFrame with at least columns:
+      plasmid, guide, dTAG, norm.bfp, fc
+
     """
     # NFC background
     mBFP_neg, mmCherry_neg = step1c.compute_nfc_background("fcs_files/NFC")
@@ -112,10 +116,6 @@ def build_hill_dataset():
     # 3) fold-change vs NTC
     d4["fc"] = d4[CH_mCh] / d4["meanNTC"]
 
-    # ---------------------------------------------------------
-    # 4) FIX: Min-Max normalization (Must match Step 1c)
-    # ---------------------------------------------------------
-    # The previous version incorrectly divided by meanBFP_NTC.
     # We now apply the same min-max scaling used during fitting.
     d4["norm.bfp"] = (
         d4.groupby(["plasmid", "guide"], group_keys=False)[CH_BFP]
@@ -132,14 +132,19 @@ def build_hill_dataset():
 def gof_hill(out_path: Path):
     """
     Observed vs predicted fold-change for Hill fits, across plasmids.
+
+    Args
+    -----
+    out_path : Path
+        Directory to save output plots.
+
+    Returns
+    -------
+    None
     """
     hill_par = pd.read_csv(PARAM_PATH / "Hill_parameters.csv")
     d4g = build_hill_dataset()
 
-    # ---------------------------------------------------------
-    # FIX: Map raw plasmid codes (from filenames) to the labels
-    # used in Hill_parameters.csv (matching Step 1c logic)
-    # ---------------------------------------------------------
     name_map = {
         "430": "SP430",
         "411": "SP411",
@@ -208,9 +213,7 @@ def gof_hill(out_path: Path):
 # ---------------------------------------------------------------------
 def build_rev_dataset():
     """
-    Rebuild derepression dataset (like step_2) using its helper functions.
-    Returns a DataFrame with at least columns:
-      plasmid, time, fc.cherry, norm.bfp
+    Build the REV dataset for derepression fits.
     """
     mBFP_neg, mmCherry_neg = step2.compute_nfc_background("fcs_files/NFC")
     df_tc = step2.load_timecourse_with_bg(mBFP_neg, mmCherry_neg)
@@ -221,10 +224,6 @@ def build_rev_dataset():
 def gof_derepression(out_path: Path):
     """
     Observed vs predicted mCherry trajectories for derepression ODE fits.
-    Uses:
-      - step2.simulate_ode
-      - parameters from Hill_parameters.csv + alphamcherry.csv + half-times
-      - best delays from delays_derepression.csv
     """
     rev = build_rev_dataset()
     pars = step2.load_parameters()  # same logic as in step_2_simulate_derepression
@@ -370,10 +369,6 @@ def build_kd_dataset():
 def gof_repression(out_path: Path):
     """
     Observed vs predicted mCherry trajectories for repression ODE fits.
-    Uses:
-      - step3.simulate_ode
-      - parameters from Hill_parameters.csv + alphamcherry.csv + half-times
-      - best delays from delays_repression.csv
     """
     kd = build_kd_dataset()
     pars = step3.load_parameters()

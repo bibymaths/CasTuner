@@ -34,6 +34,20 @@ os.makedirs(OUT_PATH, exist_ok=True)
 # Simulation Logic
 # -----------------------------------------------------------------------------
 def ode_rhs(t, y, t_up, K, n, alpha):
+    """
+    ODE right-hand side for the genetic construct model.
+
+    Args
+        t (float): Current time.
+        y (list): Current state [R, Y].
+        t_up (float): Half-time for upregulation.
+        K (float): Hill constant.
+        n (float): Hill coefficient.
+        alpha (float): Degradation rate of Y.
+
+    Returns
+        list: Derivatives [dR/dt, dY/dt].
+    """
     R, Y = y
     t_up = max(float(t_up), 1e-6)
     beta = math.log(2.0) / t_up
@@ -48,6 +62,19 @@ def ode_rhs(t, y, t_up, K, n, alpha):
 
 
 def simulate_construct(t_up, K, n, alpha, t_end=72.0, dt=0.05):
+    """
+    Simulate the genetic construct dynamics over time.
+
+    Args:
+        t_up (float): Half-time for upregulation.
+        K (float): Hill constant.
+        n (float): Hill coefficient.
+        alpha (float): Degradation rate of Y.
+        t_end (float): End time for simulation.
+        dt (float): Time step for evaluation.
+    Returns:
+        pd.DataFrame: Time series of Y over time.
+    """
     t_eval = np.arange(0.0, t_end + dt / 2, dt)
     y0 = [0.0, 1.0 / max(float(alpha), 1e-12)]
 
@@ -66,6 +93,14 @@ def simulate_construct(t_up, K, n, alpha, t_end=72.0, dt=0.05):
 
 
 def compute_metrics(ts):
+    """
+    Compute performance metrics from the time series data.
+
+    Args:
+        ts (pd.DataFrame): Time series data with columns 'time' and 'Y'.
+    Returns:
+        dict: Computed metrics: dynamic_range, t50, overshoot.
+    """
     if ts is None or len(ts) < 5:
         return {k: np.nan for k in ["dynamic_range", "t50", "overshoot"]}
 

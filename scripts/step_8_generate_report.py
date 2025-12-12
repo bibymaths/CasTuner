@@ -84,8 +84,15 @@ def ensure_dirs() -> None:
 
 def run_convert(pdf: Path, png: Path) -> bool:
     """
-    Try to convert a single PDF into PNG using ImageMagick's `convert`.
-    Returns True on success, False on failure or if convert is missing.
+    Convert a PDF to PNG using ImageMagick's `convert` command.
+    Returns True on success, False on failure.
+
+    Args:
+        pdf (Path): Path to the input PDF file.
+        png (Path): Path to the output PNG file.
+
+    Returns:
+        bool: True if conversion succeeded, False otherwise.
     """
     try:
         subprocess.run(
@@ -106,7 +113,7 @@ def run_convert(pdf: Path, png: Path) -> bool:
 def mirror_plots() -> None:
     """
     Mirror all plots from `plots/` into `report/plots/` and create PNG mirrors
-    for each PDF (if possible).
+    for each PDF.
     """
     print("[info] Mirroring plots into report/plots ...")
     for pdf in PLOTS_PATH.rglob("*.pdf"):
@@ -134,7 +141,13 @@ def mirror_tables() -> None:
 
 def load_csv(name: str) -> Optional[pd.DataFrame]:
     """
-    Safe CSV loader from `parameters/`. Returns None if missing.
+    Load a CSV from PARAM_PATH if it exists; warn and return None otherwise.
+
+    Args:
+        name (str): Filename of the CSV to load.
+
+    Returns:
+        Optional[pd.DataFrame]: Loaded DataFrame or None if missing.
     """
     path = PARAM_PATH / name
     if not path.exists():
@@ -147,12 +160,11 @@ def load_csv(name: str) -> Optional[pd.DataFrame]:
 
 
 # -------------------------------------------------------------------------
-# Biological summaries – lightweight but explicit
+# Biological summaries
 # -------------------------------------------------------------------------
 def summarize_half_times(df: pd.DataFrame, label: str) -> str:
     """
     Generic summary for up/down half-times table.
-    Expects columns: plasmid, halftime (or t_up / t_down).
     """
     cols = df.columns
     if "halftime" in cols:
@@ -193,7 +205,6 @@ def summarize_half_times(df: pd.DataFrame, label: str) -> str:
 def summarize_hill(df: pd.DataFrame) -> str:
     """
     Summary for Hill_parameters.csv table.
-    Expects: plasmid, K or k, n.
     """
     df = df.copy()
     if "k" not in df.columns and "K" in df.columns:
@@ -235,8 +246,10 @@ def summarize_hill(df: pd.DataFrame) -> str:
 
 
 def summarize_alpha(df: pd.DataFrame) -> str:
+    """
+    Summary for alphamcherry.csv table.
+    """
     if "alpha" not in df.columns:
-        # try some common alt column names
         for alt in ("alphamcherry", "alpha_mcherry", "a"):
             if alt in df.columns:
                 df = df.rename(columns={alt: "alpha"})
@@ -268,6 +281,9 @@ def summarize_alpha(df: pd.DataFrame) -> str:
 
 def summarize_delays(df_de: Optional[pd.DataFrame],
                      df_kd: Optional[pd.DataFrame]) -> str:
+    """
+    Summary for delays in derepression (df_de) and repression (df_kd).
+    """
     parts: List[str] = []
     if df_de is not None and not df_de.empty:
         col = "d_rev" if "d_rev" in df_de.columns else df_de.columns[-1]
@@ -297,11 +313,13 @@ def summarize_delays(df_de: Optional[pd.DataFrame],
 
 def summarize_noise(noise_ts: Optional[pd.DataFrame],
                     noise_hier: Optional[pd.DataFrame]) -> str:
+    """
+    Summary for single-cell noise tables.
+    """
     if noise_ts is None or noise_ts.empty:
         return "Single-cell noise tables were not available."
 
     df = noise_ts.copy()
-    # Expect: mean_BFP, cv2_BFP, mean_mCherry, cv2_mCherry, plasmid, exp, time
     text = []
 
     for ch, mean_col, cv_col in [
@@ -341,6 +359,9 @@ def summarize_noise(noise_ts: Optional[pd.DataFrame],
 
 def summarize_design_space(design_df: Optional[pd.DataFrame],
                            top10_df: Optional[pd.DataFrame]) -> str:
+    """
+    Summary for design-space scan and top-10 candidate selection.
+    """
     if design_df is None or design_df.empty:
         return "Design-space scan results were not found."
 
@@ -392,14 +413,12 @@ def summarize_design_space(design_df: Optional[pd.DataFrame],
 
 
 # -------------------------------------------------------------------------
-# Experimental knobs: we try to introspect from your step scripts
+# Experimental knobs
 # -------------------------------------------------------------------------
 def build_knobs_paragraph() -> str:
     """
-    Describe gating + model knobs by importing your step scripts.
-    If imports fail, fall back to a generic description.
+    Describe gating + model knobs by importing step scripts.
     """
-    # try to import from scripts/
     sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
     try:
         import step_1a_fit_upregulation as s1a  # type: ignore
@@ -478,6 +497,10 @@ def build_knobs_paragraph() -> str:
 # Report building
 # -------------------------------------------------------------------------
 def add_heading(story, text, styles, lvl=1):
+    """
+    Add a heading of level `lvl` to the story.
+    1 = main section, 2 = subsection, etc.
+    """
     size = 18 if lvl == 1 else 14
     style = ParagraphStyle(
         name=f"Heading{lvl}",
@@ -491,6 +514,10 @@ def add_heading(story, text, styles, lvl=1):
 
 
 def add_paragraph(story, text, styles):
+    """
+    Add a paragraph (or multiple paragraphs) to the story.
+    `text` can be a string or a list/tuple of strings.
+    """
     if isinstance(text, (list, tuple)):
         text = " ".join(str(t) for t in text if t is not None)
     else:
@@ -509,7 +536,6 @@ def add_plot_if_available(
 ):
     """
     Embed a PNG version of a plot into the report if present in report/plots.
-    `relative_plot` is relative to `plots/`, e.g. "noise_kinetics/noise_vs_mean_BFP.pdf".
     """
     png_path = REPORT_PLOTS / relative_plot
     png_path = png_path.with_suffix(".png")
@@ -714,7 +740,6 @@ def build_report():
     print(f"[info] Writing report to {REPORT_FILE}")
     doc = SimpleDocTemplate(str(REPORT_FILE), pagesize=A4)
     doc.build(story)
-
 
 if __name__ == "__main__":
     build_report()

@@ -21,9 +21,6 @@ from scipy.integrate import solve_ivp
 
 warnings.filterwarnings("ignore")
 
-# BASE_PATH   = "Python_results"
-# PARAM_PATH  = os.path.join(BASE_PATH, "parameters")
-
 PARAM_PATH = "parameters"
 os.makedirs(PARAM_PATH, exist_ok=True)
 
@@ -32,6 +29,9 @@ os.makedirs(PARAM_PATH, exist_ok=True)
 # Load existing parameter tables
 # -----------------------------------------------------------------------------
 def _read_norm(path: str) -> pd.DataFrame:
+    """
+    Read a CSV file and raise FileNotFoundError if not found.
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(path)
     df = pd.read_csv(path)
@@ -85,7 +85,6 @@ def load_measured_parameter_ranges() -> Dict[str, Tuple[float, float]]:
             return (0.0, 8.0)  # fallback wide default
         df = pd.read_csv(path)
         if col_name not in df.columns:
-            # allow any numeric column
             num_cols = [c for c in df.columns if df[c].dtype != "O"]
             if not num_cols:
                 return (0.0, 8.0)
@@ -109,15 +108,31 @@ def load_measured_parameter_ranges() -> Dict[str, Tuple[float, float]]:
 
 
 # -----------------------------------------------------------------------------
-# Repression ODE (KD) – same structure as step_3_simulate_repression
+# Repression ODE (KD)
 # -----------------------------------------------------------------------------
 def ode_rhs(t: float, y: np.ndarray,
             t_up: float, K: float, n: float, alpha: float) -> np.ndarray:
     """
+    ODE right-hand side for repression dynamics:
+
     dR = beta - R*(ln2/t_up)
     dY = (K^n/(K^n + R^n)) - alpha*Y
 
     We set beta = ln(2)/t_up so that R rises with half-time t_up.
+
+    Parameters
+    ----------
+    t : float
+        Current time (not used, as ODE is time-invariant).
+    y : np.ndarray
+        Current state vector [R, Y].
+    t_up, K, n, alpha : float
+        Model parameters.
+
+    Returns
+    -------
+    np.ndarray
+        Derivatives [dR, dY].
     """
     R, Y = y
     t_up = max(float(t_up), 1e-6)
@@ -185,6 +200,16 @@ def simulate_repression(t_up: float, K: float, n: float, alpha: float,
 def compute_design_metrics(ts: pd.DataFrame) -> Dict[str, float]:
     """
     Given a time series (time, Y), compute dynamic range and timing metrics.
+
+    Parameters
+    ----------
+    ts : pd.DataFrame
+        Time series with columns: time, Y
+
+    Returns
+    -------
+    dict
+        Keys: dynamic_range, t10_90, t50, overshoot
     """
     t = ts["time"].to_numpy(float)
     y = ts["Y"].to_numpy(float)
@@ -255,9 +280,20 @@ def sample_design_space(ranges: Dict[str, Tuple[float, float]],
     Sample a design space over (K, n, t_up, t_down, delay_kd) using uniform
     sampling within measured min/max ranges, slightly padded.
 
+    Parameters
+    ----------
+    ranges : dict
+        Keys: 'K', 'n', 't_up', 't_down', 'alpha', 'delay_kd'
+        Values: (min, max) tuples.
+    n_samples : int
+        Number of samples to generate.
+    seed : int
+        Random seed for reproducibility.
+
     Returns
     -------
     pd.DataFrame with columns: design_id, K, n, t_up, t_down, alpha, delay_kd
+
     """
     rng = np.random.default_rng(seed)
 
