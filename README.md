@@ -1,6 +1,6 @@
 # CasTuner (Python Port)
 
-<img src="docs/assets/logo.svg" alt="CasTuner Logo" width="700"/> 
+<img src="docs/assets/logo.svg" alt="CasTuner Logo" width="400"/> 
 
 ## Modelling of repression and derepression dynamics in CRISPR/Cas-based analog gene-tuning systems
 
