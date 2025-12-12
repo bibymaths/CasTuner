@@ -1,6 +1,6 @@
 # CasTuner (Python Port)
 
-<img src="docs/assets/logo.svg" alt="CasTuner Logo" width="400"/> 
+![CasTuner Logo](docs/assets/logo.svg)
  
 [![Deploy MkDocs to GitHub Pages](https://github.com/bibymaths/CasTuner/actions/workflows/deploy.yml/badge.svg)](https://github.com/bibymaths/CasTuner/actions/workflows/deploy.yml) 
 [![Create Release](https://github.com/bibymaths/CasTuner/actions/workflows/release.yml/badge.svg)](https://github.com/bibymaths/CasTuner/actions/workflows/release.yml) 

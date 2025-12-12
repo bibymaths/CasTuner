@@ -1,6 +1,6 @@
-# CasTuner (Python Port)
+# CasTuner - Python Implementation
  
-<img src="assets/logo.svg" alt="CasTuner Logo" width="400"> 
+![CasTuner Logo](assets/logo.svg)
 
 ## Quantitative modelling of analog gene tuning
 
