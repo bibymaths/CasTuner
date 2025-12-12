@@ -1,30 +1,34 @@
 name: Create Release
 
-permissions:
-  contents: write
-
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract version
+      - name: Extract version from pyproject.toml
         id: version
+        shell: bash
         run: |
           VERSION=$(grep version pyproject.toml | head -1 | sed 's/.*"//;s/".*//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create tag
+      - name: Create tag if missing
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GH_PAT }}   # <--- IMPORTANT
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # use GitHub Actions builtin token
           script: |
             const tag = "v${{ steps.version.outputs.version }}";
             const sha = context.sha;
+
+            console.log(`Processing tag: ${tag}`);
 
             try {
               await github.rest.git.getRef({
@@ -32,7 +36,9 @@ jobs:
                 repo: context.repo.repo,
                 ref: `tags/${tag}`,
               });
-            } catch {
+              console.log("Tag already exists. Skipping creation.");
+            } catch (error) {
+              console.log("Creating tag...");
               await github.rest.git.createRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -41,9 +47,11 @@ jobs:
               });
             }
 
-      - name: Create release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
