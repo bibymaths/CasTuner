@@ -85,11 +85,3 @@ parameters/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# =====================
-# Custom project notes / experiments
-# =====================
-scratch/
-notebooks/
-old_scripts/
-Rscripts/
