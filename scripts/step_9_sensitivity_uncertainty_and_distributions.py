@@ -72,6 +72,16 @@ def parse_args():
     ap.add_argument("--seed", type=int, default=13)
     return ap.parse_args()
 
+import os
+import contextlib
+
+@contextlib.contextmanager
+def quiet():
+    """Suppress stdout/stderr (Step 2 prints per ODE call)."""
+    with open(os.devnull, "w") as devnull:
+        with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
+            yield
+
 # ---------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------
@@ -105,6 +115,25 @@ def _norm_cols(df: pd.DataFrame) -> pd.DataFrame:
                   .str.replace(r"[\s\-]+", "_", regex=True))
     return df
 
+def _normalize_plasmid_labels(s: pd.Series) -> pd.Series:
+    s = s.astype(str)
+    # If already SP*, keep it.
+    m = s.str.startswith("SP")
+    out = s.copy()
+
+    # Only map “raw” labels when not already normalized
+    raw_map = {
+        "430": "SP430",
+        "411": "SP411",
+        "427": "SP427",
+        "428": "SP428",
+        "430ABA": "SP430A",
+        "SP430ABA": "SP430A",  # common alias in your REV data
+    }
+    out.loc[~m] = out.loc[~m].replace(raw_map)
+    # Also handle SP430ABA -> SP430A even if it starts with SP
+    out = out.replace({"SP430ABA": "SP430A"})
+    return out
 
 def savefig(path: Path):
     plt.tight_layout()
@@ -181,59 +210,11 @@ def metric_summary(y: np.ndarray, t: np.ndarray):
 def load_fitted_tables():
     up = _norm_cols(pd.read_csv(PARAM_PATH / "half_times_upregulation.csv"))  # plasmid, halftime, se
     down = _norm_cols(pd.read_csv(PARAM_PATH / "half_times_downregulation.csv"))  # plasmid, halftime, se
-    hill = _norm_cols(pd.read_csv(PARAM_PATH / "hill_parameters.csv"))  # plasmid, k/K, n
+    hill = _norm_cols(pd.read_csv(PARAM_PATH / "Hill_parameters.csv"))  # plasmid, k/K, n
     alpha = _norm_cols(pd.read_csv(PARAM_PATH / "alphamcherry.csv"))  # alpha (global or per plasmid)
 
     delays_rev = _norm_cols(pd.read_csv(PARAM_PATH / "delays_derepression.csv"))  # plasmid, d_rev
     delays_kd = _norm_cols(pd.read_csv(PARAM_PATH / "delays_repression.csv"))  # plasmid, d_rev
-
-    # Normalize hill columns to K, n
-    if "k" in hill.columns and "k" != "k":  # noop; kept
-        pass
-    if "k" not in hill.columns and "k" in hill.columns:
-        pass
-    if "k" not in hill.columns and "k" not in hill.columns:
-        # tolerate uppercase K
-        if "k" not in hill.columns and "k" not in hill.columns and "k" not in hill.columns:
-            pass
-    if "k" not in hill.columns and "k" not in hill.columns and "k" not in hill.columns:
-        pass
-    if "k" not in hill.columns and "k" not in hill.columns:
-        # tolerate "k" vs "k"
-        if "k" not in hill.columns and "k" not in hill.columns:
-            pass
-
-    # Typical in your code: Hill_parameters.csv may be K,n or k,n
-    if "k" not in hill.columns and "k" in hill.columns:
-        hill = hill.rename(columns={"k": "k"})
-    if "k" not in hill.columns and "k" not in hill.columns and "k" in hill.columns:
-        hill = hill.rename(columns={"k": "k"})
-    if "k" not in hill.columns and "k" not in hill.columns:
-        if "k" not in hill.columns and "k" not in hill.columns and "k" in hill.columns:
-            hill = hill.rename(columns={"k": "k"})
-    if "k" not in hill.columns and "k" not in hill.columns and "k" in hill.columns:
-        hill = hill.rename(columns={"k": "k"})
-
-    if "k" not in hill.columns and "k" not in hill.columns:
-        if "k" in hill.columns:
-            pass
-
-    # Final: if "k" missing but "k" exists via uppercase "k" mapping (rare)
-    if "k" not in hill.columns and "k" in hill.columns:
-        hill = hill.rename(columns={"k": "k"})
-
-    # Unify to K column name for downstream
-    if "k" in hill.columns and "k" not in hill.columns:
-        hill = hill.rename(columns={"k": "k"})
-    if "k" in hill.columns:
-        hill = hill.rename(columns={"k": "k"})
-    if "k" not in hill.columns and "k" not in hill.columns and "k" in hill.columns:
-        hill = hill.rename(columns={"k": "k"})
-    if "k" not in hill.columns and "k" not in hill.columns:
-        # tolerate "k" or "k"
-        if "k" in hill.columns:
-            hill = hill.rename(columns={"k": "k"})
-    # If the file uses "k" already, we keep it and treat that as K.
 
     # Ensure columns exist
     for df, need, name in [
@@ -249,10 +230,10 @@ def load_fitted_tables():
 
     # Map Hill midpoint column to "K" (it can be K or k; your steps use both patterns)
     # after reading hill:
-    if "K" in hill.columns:
-        hill = hill.rename(columns={"K": "K"})
-    elif "k" in hill.columns:
+    if "k" in hill.columns:
         hill = hill.rename(columns={"k": "K"})
+    elif "K" in hill.columns:  # optional, if you ever skip _norm_cols
+        hill = hill.rename(columns={"K": "K"})
     else:
         raise KeyError(f"Hill_parameters.csv must contain K or k. Found={list(hill.columns)}")
 
@@ -398,7 +379,8 @@ def run_one_model(
     for row in X:
         pars = dict(zip(param_names, row))
         # Simulate with these params
-        sim = sim_func(pars)
+        with quiet():
+            sim = sim_func(pars)
         if sim is None or sim.empty:
             metrics_list.append({k: np.nan for k in ["dynamic_range", "t50", "t10_90", "overshoot", "auc", "y_end"]})
             continue
@@ -484,7 +466,9 @@ def run_one_model(
             else:
                 pars_draw[p] = bootstrap_params(rng, c, kind="lognormal", cv=0.20, clip_lo=1e-9)
 
-        sim = sim_func(pars_draw)
+        with quiet():
+            sim = sim_func(pars_draw)
+
         if sim is None or sim.empty:
             continue
 
@@ -617,15 +601,11 @@ def main():
     rev = build_rev_dataset()
     kd = build_kd_dataset()
 
-    # In GOF you map raw labels -> pretty labels; replicate that here
-    name_map = {"430": "SP430", "411": "SP411", "427": "SP427", "428": "SP428", "430ABA": "SP430A"}
+    if rev.empty:
+        raise RuntimeError("REV dataset is empty. Check nfc/timecourse paths and step2 loader.")
 
-    rev = rev.copy()
-    kd = kd.copy()
-    rev["plasmid"] = rev["plasmid"].map(name_map)
-    kd["plasmid"] = kd["plasmid"].map(name_map)
-    rev = rev.dropna(subset=["plasmid"])
-    kd = kd.dropna(subset=["plasmid"])
+    rev["plasmid"] = _normalize_plasmid_labels(rev["plasmid"])
+    kd["plasmid"] = _normalize_plasmid_labels(kd["plasmid"])
 
     # Ensure numeric
     for df in (rev, kd):
@@ -731,10 +711,11 @@ def main():
                 fitted=fitted,
                 bounds=bounds,
                 sim_func=sim_func,
-                n_sobol_base=512,
-                n_boot=2000,
-                seed=13
+                n_sobol_base=ARGS.sobol_base,
+                n_boot=ARGS.n_boot,
+                seed=ARGS.seed
             )
+
             if sob is not None and not sob.empty:
                 all_sobol.append(sob)
             if boot is not None and not boot.empty:
@@ -777,6 +758,9 @@ def main():
                 all_sobol.append(sob)
             if boot is not None and not boot.empty:
                 all_boot.append(boot)
+
+    sob_all_path = OUT_PARAM / "sobol_indices_all.csv"
+    boot_all_path = OUT_PARAM / "bootstrap_params_and_metrics_all.csv"
 
     # Aggregate outputs
     if all_sobol:
