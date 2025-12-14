@@ -83,7 +83,9 @@ def simulate_construct(t_up, K, n, alpha, t_end=72.0, dt=0.05):
         t_span=(0, t_end),
         y0=y0,
         t_eval=t_eval,
-        # method="LSODA"
+        method="LSODA",
+        rtol=1e-7,
+        atol=1e-9
     )
     if not sol.success:
         return None

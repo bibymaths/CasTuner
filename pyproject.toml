@@ -32,6 +32,7 @@ dependencies = [
     "mkdocs-section-index>=0.3.10",
     "pymdown-extensions>=10.19",
     "ipykernel>=6.31.0",
+    "salib>=1.5.1",
 ]
 
 [project.urls]

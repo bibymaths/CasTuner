@@ -260,6 +260,39 @@ rule generate_report:
             script=script("step_8_generate_report.py"),
         )
 
+# --------------------------------------------------------------------------
+# Step 9: Sensitivity + Uncertainty Quantification
+# --------------------------------------------------------------------------
+rule uq_sensitivity:
+    input:
+        f"{OUT_PARAMS}/half_times_upregulation.csv",
+        f"{OUT_PARAMS}/half_times_downregulation.csv",
+        f"{OUT_PARAMS}/Hill_parameters.csv",
+        f"{OUT_PARAMS}/alphamcherry.csv",
+        f"{OUT_PARAMS}/delays_derepression.csv",
+        f"{OUT_PARAMS}/delays_repression.csv",
+        lambda wc: config["paths"]["nfc_dir"],
+        lambda wc: config["paths"]["timecourse_dir"]
+    output:
+        f"{OUT_PARAMS}/uq_sensitivity/sobol_indices_all.csv",
+        f"{OUT_PARAMS}/uq_sensitivity/bootstrap_params_and_metrics_all.csv",
+        touch(f"{OUT_PLOTS}/uq_sensitivity/.ok")
+    shell:
+        (
+            "{uv} {script} "
+            "--params-dir {out_params} --plots-dir {out_plots} "
+            "--nfc-dir {nfc} --timecourse-dir {tc} "
+            "&& test -s {out1} && test -s {out2}"
+        ).format(
+            uv=UV,
+            script=script("step_9_sensitivity_uncertainty_and_distributions.py"),
+            out_params=OUT_PARAMS,
+            out_plots=OUT_PLOTS,
+            nfc=config["paths"]["nfc_dir"],
+            tc=config["paths"]["timecourse_dir"],
+            out1=f"{OUT_PARAMS}/uq_sensitivity/sobol_indices_all.csv",
+            out2=f"{OUT_PARAMS}/uq_sensitivity/bootstrap_params_and_metrics_all.csv",
+        )
 
 # --------------------------------------------------------------------------
 # Cleanup Rule
@@ -303,7 +336,8 @@ rule clean_outputs:
 rule cleanup_after_report:
     """
     Final cleanup:
-    - After the report is successfully generated, remove OUT_PARAMS and OUT_PLOTS.
+    - After the report is successfully generated, remove OUT_PARAMS and OUT_PLOTS,
+      but keep uq_sensitivity outputs.
     """
     input:
         "report/CasTuner_summary_report.pdf"
@@ -321,8 +355,18 @@ rule cleanup_after_report:
 
         echo "[postclean] Removing $params_dir and $plots_dir after successful run..."
 
-        if [ -d "$params_dir" ]; then rm -rf "$params_dir"; fi
-        if [ -d "$plots_dir" ]; then rm -rf "$plots_dir"; fi
+        # Keep UQ outputs, delete everything else
+        if [ -d "$params_dir" ]; then
+          find "$params_dir" -mindepth 1 -maxdepth 1 \
+            ! -name "uq_sensitivity" \
+            -exec rm -rf {{}} +
+        fi
+
+        if [ -d "$plots_dir" ]; then
+          find "$plots_dir" -mindepth 1 -maxdepth 1 \
+            ! -name "uq_sensitivity" \
+            -exec rm -rf {{}} +
+        fi
 
         mkdir -p "$(dirname {output})"
         echo "ok" > {output}
@@ -338,7 +382,10 @@ rule workflow_done:
     """
     input:
         "report/CasTuner_summary_report.pdf",
-        "postclean/.ok"
+        "postclean/.ok",
+        f"{OUT_PARAMS}/uq_sensitivity/sobol_indices_all.csv",
+        f"{OUT_PARAMS}/uq_sensitivity/bootstrap_params_and_metrics_all.csv",
+        f"{OUT_PLOTS}/uq_sensitivity/.ok"
     output:
         temp("workflow.done")
     shell:
