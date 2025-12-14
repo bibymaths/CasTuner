@@ -20,6 +20,7 @@ This port reproduces the original **R-based kinetic modelling, parameter estimat
 data flow, parameter inference logic, and figure generation.
 All steps—from FCS preprocessing to ODE-based simulation—are reproducible using this repository alone.
 
+For running example not
 ---
 
 ## 1. Structure and Execution

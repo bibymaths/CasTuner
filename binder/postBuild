@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+
+# Optional: precompile fonts/cache etc.
+python -c "import matplotlib; matplotlib.get_cachedir()"
+
+# Make sure notebooks render nicely
+jupyter lab --version >/dev/null
