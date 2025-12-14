@@ -167,6 +167,40 @@ All plots were generated from the same raw `.fcs` data under equivalent normaliz
 | **Delay scan (CasRx)**          | MAE vs. delay in repression fit                        | <img src="R_results/pngs/MAE_KD_CasRx_mcherry.png" width="220"> | <img src="Python_results/pngs/MAE_KD_CasRx_mcherry.png" width="220"> | Same error curve shape; minima at 2–3 h region in both                 |
 
 ---
+ 
+## 9. Running notebooks 
+
+Jupyter notebooks for interactive exploration of each analysis step are provided in the `notebooks/` directory.
+To run the notebooks, ensure you have Jupyter installed in your environment:
+```bash
+pip install jupyter
+```
+ 
+Then, launch Jupyter from the project root:
+```bash 
+jupyter notebook
+``` 
+  
+This will open the Jupyter interface in your web browser, where you can navigate to the `notebooks/` folder and
+open any of the provided notebooks for interactive analysis and visualization.  
+
+To run via Binder without local setup, click the badge below:
+ 
+Note: It may take a few minutes to launch the environment on Binder. 
+
+1. Notebook: Quickstart with Toy Dataset
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bibymaths/CasTuner/main?urlpath=%2Fdoc%2Ftree%2Fnotebooks%2Fexample_notebook_00_quickstart_subset.ipynb)
+
+2. Notebook: ODE Simulation with Toy Dataset
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bibymaths/CasTuner/main?urlpath=%2Fdoc%2Ftree%2Fnotebooks%2Fexample_notebook_01_ode_steps_and_gof_subset.ipynb)
+
+3. Notebook: Real FCS data analysis
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bibymaths/CasTuner/main?urlpath=%2Fdoc%2Ftree%2Fnotebooks%2Fexample_notebook_02_real_fcs_subset.ipynb)
+
+---
 
 ### Summary
 

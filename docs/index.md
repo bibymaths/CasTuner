@@ -51,3 +51,19 @@ This Python port turns that biological framework into a **reproducible, Snakemak
 - **References** – primary CasTuner paper and related work.
 
 For a quick practical overview (installation, Snakemake usage, validation tables), see the project-level `README.md`.
+
+## Launch Binder
+
+Note: It may take a few minutes to launch the environment on Binder. 
+
+1. Notebook: Quickstart with Toy Dataset
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bibymaths/CasTuner/main?urlpath=%2Fdoc%2Ftree%2Fnotebooks%2Fexample_notebook_00_quickstart_subset.ipynb)
+
+2. Notebook: ODE Simulation with Toy Dataset
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bibymaths/CasTuner/main?urlpath=%2Fdoc%2Ftree%2Fnotebooks%2Fexample_notebook_01_ode_steps_and_gof_subset.ipynb)
+
+3. Notebook: Real FCS data analysis
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bibymaths/CasTuner/main?urlpath=%2Fdoc%2Ftree%2Fnotebooks%2Fexample_notebook_02_real_fcs_subset.ipynb)
