@@ -4,21 +4,17 @@
 """
 step_9_sensitivity_uncertainty_and_distributions.py
 ---------------------------------------------------
-Rigorous sensitivity + uncertainty quantification for CasTuner ODE pipeline.
+Rigorous sensitivity + uncertainty quantification for CasTuner-Python Port pipeline.
 
-What this script produces
-  A) Global sensitivity (SALib Sobol) on ODE-derived metrics for:
-       - REV (derepression): params = (t_down, K, n, alpha, delay_rev)
-       - KD  (repression):   params = (t_up,   K, n, alpha, delay_kd)
-  B) Bootstrap-based uncertainty quantification:
-       - Parameter distributions (bootstrapped draws around fitted values)
-       - Metric distributions (dynamic_range, t50, t10_90, overshoot, auc, y_end)
-       - Predictive bands for Y(t): 2.5/50/97.5 percentiles across bootstrap sims
-  C) Plots + CSVs:
-       - Sobol indices (S1, ST) barplots
-       - Parameter histograms
-       - Metric histograms
-       - Observed mean trajectory vs predictive band
+Purpose:
+    - For each plasmid/model (REV and KD), perform Sobol sensitivity analysis
+        on key metrics (dynamic range, t50, t10-90, overshoot, AUC, end level).
+    - For each plasmid/model, perform bootstrap parameter sampling to
+        generate predictive bands and parameter/metric distributions.
+
+Requires:
+    - step_2_simulate_derepression.py
+    - step_3_simulate_repression.py
 
 Inputs:
   parameters/half_times_upregulation.csv        (plasmid, halftime, se)  -> t_up
@@ -28,15 +24,7 @@ Inputs:
   parameters/delays_derepression.csv            (plasmid, d_rev)
   parameters/delays_repression.csv              (plasmid, d_rev)
 
-Raw data are reconstructed via:
-  - step_2_simulate_derepression (REV dataset + simulate_ode + delay_scan)
-  - step_3_simulate_repression   (KD dataset  + simulate_ode + delay_scan)
-
-Outputs:
-  parameters/uq_sensitivity/...
-  plots/uq_sensitivity/...
-
-Notes (important):
+Notes:
   - Half-times have SE from Step 1a/1b, so bootstrap uses Normal(mean, se).
     (Clipped to positive.)
   - Hill K and n have no SE in your pipeline; bootstrap uses a conservative
@@ -45,23 +33,25 @@ Notes (important):
 """
 
 from pathlib import Path
-import math, sys
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import argparse, os, contextlib, math, sys
 from SALib.sample import saltelli
 from SALib.analyze import sobol
-
-SCRIPTS_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPTS_DIR))
+from joblib import Parallel, delayed
 import step_2_simulate_derepression as step2
 import step_3_simulate_repression as step3
 
-import argparse
 
 def parse_args():
+    """
+    Parse command-line arguments for directories and parameters.
+
+    Returns:
+        argparse.Namespace: Parsed arguments with attributes for each parameter.
+
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--params-dir", default="parameters", help="Parameters output dir (from config.yaml)")
     ap.add_argument("--plots-dir", default="plots", help="Plots output dir (from config.yaml)")
@@ -72,12 +62,16 @@ def parse_args():
     ap.add_argument("--seed", type=int, default=13)
     return ap.parse_args()
 
-import os
-import contextlib
-
 @contextlib.contextmanager
 def quiet():
-    """Suppress stdout/stderr (Step 2 prints per ODE call)."""
+    """
+    Suppress stdout/stderr (Step 2 prints per ODE call).
+
+    Usage:
+        with quiet():
+            # code that prints
+            ...
+    """
     with open(os.devnull, "w") as devnull:
         with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
             yield
@@ -85,6 +79,8 @@ def quiet():
 # ---------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------
+SCRIPTS_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPTS_DIR))
 ARGS = parse_args()
 
 PARAM_PATH = Path(ARGS.params_dir)
@@ -99,10 +95,30 @@ OUT_PLOTS.mkdir(parents=True, exist_ok=True)
 # Small utilities
 # ---------------------------------------------------------------------
 def _clip_pos(x, eps=1e-9):
+    """
+    Clip input to be at least eps (default 1e-9).
+
+    Args:
+        x: array-like input
+        eps: minimum value
+
+    Returns:
+        np.ndarray: clipped array
+    """
     return np.maximum(np.asarray(x, float), eps)
 
 
 def _safe_float(x, default=np.nan):
+    """
+    Safely convert x to float, return default on failure.
+
+    Args:
+        x: input value
+        default: value to return on failure
+
+    Returns:
+        float or default
+    """
     try:
         return float(x)
     except Exception:
@@ -110,12 +126,30 @@ def _safe_float(x, default=np.nan):
 
 
 def _norm_cols(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normalize DataFrame column names: strip, lower, replace spaces/hyphens with underscores.
+
+    Args:
+        df (pd.DataFrame): input DataFrame
+
+    Returns:
+        pd.DataFrame: DataFrame with normalized column names
+    """
     df = df.copy()
     df.columns = (df.columns.astype(str).str.strip().str.lower()
                   .str.replace(r"[\s\-]+", "_", regex=True))
     return df
 
 def _normalize_plasmid_labels(s: pd.Series) -> pd.Series:
+    """
+    Normalize plasmid labels to standard SP* format.
+
+    Args:
+        s (pd.Series): Series of plasmid labels
+
+    Returns:
+        pd.Series: Series with normalized plasmid labels
+    """
     s = s.astype(str)
     # If already SP*, keep it.
     m = s.str.startswith("SP")
@@ -135,7 +169,16 @@ def _normalize_plasmid_labels(s: pd.Series) -> pd.Series:
     out = out.replace({"SP430ABA": "SP430A"})
     return out
 
-def savefig(path: Path):
+def saveplot(path: Path):
+    """
+    Save current matplotlib figure to path with tight layout and high DPI.
+
+    Args:
+        path (Path): Output file path
+
+    Returns:
+        None
+    """
     plt.tight_layout()
     plt.savefig(path, dpi=300, bbox_inches="tight")
     plt.close()
@@ -152,6 +195,14 @@ def metric_summary(y: np.ndarray, t: np.ndarray):
       overshoot     = max(y) - mean(last 20% of y)
       auc           = integral y(t) dt
       y_end         = y(t_end)
+
+
+    Args:
+        y (np.ndarray): output trajectory values
+        t (np.ndarray): time points
+
+    Returns:
+        dict: computed metrics
     """
     y = np.asarray(y, float)
     t = np.asarray(t, float)
@@ -171,6 +222,15 @@ def metric_summary(y: np.ndarray, t: np.ndarray):
         y90 = y0 + 0.90 * total
 
         def _t_at(level):
+            """
+            Find time when y crosses level (linear interpolation).
+
+            Args:
+                level (float): target y level
+
+            Returns:
+                float: interpolated time of crossing, or np.nan if not found
+            """
             s = np.sign(y - level)
             # crossing index (first sign change)
             idx = np.where(s[:-1] * s[1:] <= 0)[0]
@@ -205,7 +265,7 @@ def metric_summary(y: np.ndarray, t: np.ndarray):
 
 
 # ---------------------------------------------------------------------
-# Load fitted parameter tables (and SE where available)
+# Load fitted parameter tables
 # ---------------------------------------------------------------------
 def load_fitted_tables():
     up = _norm_cols(pd.read_csv(PARAM_PATH / "half_times_upregulation.csv"))  # plasmid, halftime, se
@@ -228,7 +288,7 @@ def load_fitted_tables():
         if missing:
             raise KeyError(f"{name} missing columns: {missing}. Found={list(df.columns)}")
 
-    # Map Hill midpoint column to "K" (it can be K or k; your steps use both patterns)
+    # Map Hill midpoint column to "K" (it can be K or k)
     # after reading hill:
     if "k" in hill.columns:
         hill = hill.rename(columns={"k": "K"})
@@ -253,9 +313,15 @@ def load_fitted_tables():
 
 
 # ---------------------------------------------------------------------
-# Build datasets (exactly like GOF step)
+# Build datasets
 # ---------------------------------------------------------------------
 def build_rev_dataset():
+    """
+    Build REV dataset from NFC and timecourse data using step2 functions.
+
+    Returns:
+        pd.DataFrame: REV timecourse dataset with background correction and normalization.
+    """
     mBFP_neg, mmCherry_neg = step2.compute_nfc_background(ARGS.nfc_dir)
     df_tc = step2.load_timecourse_with_bg(mBFP_neg, mmCherry_neg)
     rev = step2.compute_rev_transforms(df_tc)
@@ -263,17 +329,33 @@ def build_rev_dataset():
 
 
 def build_kd_dataset():
+    """
+    Build KD dataset from NFC and timecourse data using step3 functions.
+
+    Returns:
+        pd.DataFrame: KD timecourse dataset with background correction and normalization.
+    """
     return step3.build_kd_dataset(nfc_dir=ARGS.nfc_dir, tc_dir=ARGS.timecourse_dir)
 
 
 # ---------------------------------------------------------------------
-# Parameter ranges for SALib (use fitted value ± band)
+# Parameter ranges for SALib (using fitted value ± band)
 # ---------------------------------------------------------------------
 def make_bounds(center, se=None, rel=0.25, lo=None, hi=None, clip=(1e-9, np.inf)):
     """
-    Create (min, max) bounds around a center value.
-      - If se provided: center ± 2*se
-      - Else: center * (1±rel)
+    Generate parameter bounds for SALib based on fitted center and SE or relative range.
+
+    Args:
+        center (float): Fitted center value.
+        se (float, optional): Standard error of the fitted value. If provided and positive,
+                                bounds are set to center ± 2*se.
+        rel (float, optional): Relative range for bounds if se is not provided.
+        lo (float, optional): Minimum bound override.
+        hi (float, optional): Maximum bound override.
+        clip (tuple, optional): Overall clipping range for bounds.
+
+    Returns:
+        tuple: (min_bound, max_bound) for the parameter.
     """
     c = float(center)
     if not np.isfinite(c) or c <= 0:
@@ -305,9 +387,17 @@ def bootstrap_params(rng, center, se=None, kind="normal", cv=0.20, clip_lo=1e-9,
     """
     Draw bootstrap samples for a positive parameter.
 
-    kind:
-      - normal: N(center, se) clipped
-      - lognormal: lognormal around center with coefficient of variation cv
+    Args:
+        rng: np.random.Generator instance for reproducibility.
+        center (float): Fitted center value.
+        se (float, optional): Standard error for normal sampling.
+        kind (str): "normal" or "lognormal" sampling.
+        cv (float): Coefficient of variation for lognormal sampling.
+        clip_lo (float): Minimum value to clip the sample.
+        clip_hi (float): Maximum value to clip the sample.
+
+    Returns:
+        float: Bootstrap sampled parameter value.
     """
     c = float(center)
     if kind == "normal" and se is not None and np.isfinite(se) and se > 0:
@@ -328,7 +418,7 @@ def bootstrap_params(rng, center, se=None, kind="normal", cv=0.20, clip_lo=1e-9,
 
 
 # ---------------------------------------------------------------------
-# Core runner: do REV and KD per plasmid
+# Core runner
 # ---------------------------------------------------------------------
 def run_one_model(
         model_name: str,
@@ -336,7 +426,7 @@ def run_one_model(
         data_df: pd.DataFrame,
         fitted: dict,
         bounds: dict,
-        sim_func,  # function(pars_row_dictlike, delay)->df(time,R,Y)
+        sim_func,
         obs_y_col="fc.cherry",
         time_col="time",
         n_sobol_base=ARGS.sobol_base,
@@ -344,10 +434,24 @@ def run_one_model(
         seed=ARGS.seed
 ):
     """
-    model_name: "REV" or "KD"
-    fitted: dict with fitted params
-    bounds: dict param -> (min,max) for SALib
-    sim_func: returns df with columns ["time","Y"] at least (Y is alpha-scaled in your pipeline)
+    Run Sobol sensitivity analysis and bootstrap UQ for one model/plasmid.
+
+    Args:
+        model_name (str): Model name ("REV" or "KD").
+        plasmid (str): Plasmid identifier.
+        data_df (pd.DataFrame): Observed timecourse data for the plasmid.
+        fitted (dict): Fitted parameter center values and SEs.
+        bounds (dict): Parameter bounds for SALib.
+        sim_func (callable): Function sim(pars_draw)->df(time,R,Y) to simulate the model.
+        obs_y_col (str): Column name for observed output in data_df.
+        time_col (str): Column name for time in data_df.
+        n_sobol_base (int): Base sample size for Sobol analysis.
+        n_boot (int): Number of bootstrap samples.
+        seed (int): Random seed for reproducibility.
+
+    Returns:
+        sobol_df (pd.DataFrame): Sobol sensitivity indices per metric.
+        boot_df (pd.DataFrame): Bootstrap sampled parameters and metrics.
     """
     rng = np.random.default_rng(seed)
 
@@ -435,7 +539,7 @@ def run_one_model(
             plt.barh(sub["param"], sub["ST"])
             plt.xlabel("Sobol ST (total-order)")
             plt.title(f"{model_name} {plasmid} – Sensitivity (metric={metric})")
-            savefig(OUT_PLOTS / f"{model_name}_{plasmid}_sobol_ST_{metric}.pdf")
+            saveplot(OUT_PLOTS / f"{model_name}_{plasmid}_sobol_ST_{metric}.pdf")
 
     # ----------------------------------------------------------
     # B) Bootstrap parameter draws + predictive bands
@@ -498,7 +602,7 @@ def run_one_model(
             plt.xlabel(p)
             plt.ylabel("count")
             plt.title(f"{model_name} {plasmid} – bootstrap parameter distribution")
-            savefig(OUT_PLOTS / f"{model_name}_{plasmid}_boot_param_{p}.pdf")
+            saveplot(OUT_PLOTS / f"{model_name}_{plasmid}_boot_param_{p}.pdf")
 
         # Metric histograms
         for metric in ["dynamic_range", "t50", "t10_90", "overshoot", "auc", "y_end"]:
@@ -509,7 +613,7 @@ def run_one_model(
             plt.xlabel(metric)
             plt.ylabel("count")
             plt.title(f"{model_name} {plasmid} – bootstrap metric distribution")
-            savefig(OUT_PLOTS / f"{model_name}_{plasmid}_boot_metric_{metric}.pdf")
+            saveplot(OUT_PLOTS / f"{model_name}_{plasmid}_boot_metric_{metric}.pdf")
 
     # Predictive bands
     if len(boot_curves) > 50:
@@ -537,24 +641,36 @@ def run_one_model(
         plt.ylabel("mCherry (fc.cherry)")
         plt.title(f"{model_name} {plasmid} – predictive band vs observed mean")
         plt.legend()
-        savefig(OUT_PLOTS / f"{model_name}_{plasmid}_predictive_band_overlay.pdf")
+        saveplot(OUT_PLOTS / f"{model_name}_{plasmid}_predictive_band_overlay.pdf")
 
     return sobol_df, boot_df
 
 
 # ---------------------------------------------------------------------
-# Model-specific simulators (bridge to your Step 2/3 implementations)
+# Model-specific simulators
 # ---------------------------------------------------------------------
 def make_rev_simulator(fitted_row: dict):
     """
     Returns a function sim(pars_draw)->df(time,R,Y) for REV.
-    Uses step2.simulate_ode with display-only delay applied to time.
+    Uses step2.simulate_ode with fitted R0/Y0 from data.
+
+    Args:
+        fitted_row (dict): Dictionary containing fitted parameters including R0 and Y0.
+
+    Returns:
+        callable: Function that takes parameter draws and returns simulation DataFrame.
     """
 
     def _sim(pars_draw: dict):
-        # initial conditions from data are already normalized in step2; we use fixed ICs typical in pipeline
-        # We'll mimic the step2 approach: R0 and Y0 should come from time 0 in data.
-        # Here we store them in fitted_row from the caller.
+        """
+        Simulate REV model with given parameter draws.
+
+        Args:
+            pars_draw (dict): Dictionary of parameter draws for simulation.
+
+        Returns:
+            pd.DataFrame: Simulation results with columns time, R, Y.
+        """
         R0 = float(fitted_row["R0"])
         Y0 = float(fitted_row["Y0"])
 
@@ -565,7 +681,7 @@ def make_rev_simulator(fitted_row: dict):
             "alpha": float(pars_draw["alpha"]),
         }
         delay = float(pars_draw["delay_rev"])
-        return step2.simulate_ode(R0=R0, Y0=Y0, pars=pars, tmax=150.0, step=0.05, delay=delay)
+        return step2.simulate_ode(R0=R0, Y0=Y0, pars=pd.Series(pars), tmax=150.0, step=0.05, delay=delay)
 
     return _sim
 
@@ -573,12 +689,24 @@ def make_rev_simulator(fitted_row: dict):
 def make_kd_simulator(fitted_row: dict):
     """
     Returns a function sim(pars_draw)->df(time,R,Y) for KD.
-    Uses step3.simulate_ode with display-only delay applied to time.
+
+    Args:
+        fitted_row (dict): Dictionary containing fitted parameters.
+
+    Returns:
+        callable: Function that takes parameter draws and returns simulation DataFrame.
     """
 
     def _sim(pars_draw: dict):
-        # step3.simulate_ode ignores R0/Y0 in your implementation (always uses R(0)=0, Y(0)=1/alpha)
-        # but we pass them anyway for signature stability.
+        """
+        Simulate KD model with given parameter draws.
+
+        Args:
+            pars_draw (dict): Dictionary of parameter draws for simulation.
+
+        Returns:
+            pd.DataFrame: Simulation results with columns time, R, Y.
+        """
         pars = {
             "t_up": float(pars_draw["t_up"]),
             "K": float(pars_draw["K"]),
@@ -592,9 +720,11 @@ def make_kd_simulator(fitted_row: dict):
 
 
 # ---------------------------------------------------------------------
-# Main orchestration
+# Main
 # ---------------------------------------------------------------------
 def main():
+
+    # Load fitted parameter tables
     up, down, hill, alpha, alpha_mode, alpha_val, delays_rev, delays_kd = load_fitted_tables()
 
     # Build datasets
@@ -604,6 +734,7 @@ def main():
     if rev.empty:
         raise RuntimeError("REV dataset is empty. Check nfc/timecourse paths and step2 loader.")
 
+    # Normalize plasmid labels
     rev["plasmid"] = _normalize_plasmid_labels(rev["plasmid"])
     kd["plasmid"] = _normalize_plasmid_labels(kd["plasmid"])
 
@@ -759,9 +890,6 @@ def main():
             if boot is not None and not boot.empty:
                 all_boot.append(boot)
 
-    sob_all_path = OUT_PARAM / "sobol_indices_all.csv"
-    boot_all_path = OUT_PARAM / "bootstrap_params_and_metrics_all.csv"
-
     # Aggregate outputs
     if all_sobol:
         sob_all = pd.concat(all_sobol, ignore_index=True)
@@ -775,7 +903,7 @@ def main():
             plt.barh(agg["param"], agg["ST"])
             plt.xlabel("Mean Sobol ST across plasmids")
             plt.title(f"{model} – global sensitivity summary (metric={metric})")
-            savefig(OUT_PLOTS / f"{model}_sobol_ST_mean_{metric}.pdf")
+            saveplot(OUT_PLOTS / f"{model}_sobol_ST_mean_{metric}.pdf")
 
     if all_boot:
         boot_all = pd.concat(all_boot, ignore_index=True)

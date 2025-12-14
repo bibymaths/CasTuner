@@ -88,6 +88,8 @@ jinja2==3.1.6
     #   mkdocs
     #   mkdocstrings
     #   snakemake
+joblib==1.5.2
+    # via castuner-python-port (pyproject.toml)
 jsonschema==4.25.1
     # via
     #   nbformat

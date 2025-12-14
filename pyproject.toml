@@ -33,6 +33,7 @@ dependencies = [
     "pymdown-extensions>=10.19",
     "ipykernel>=6.31.0",
     "salib>=1.5.1",
+    "joblib>=1.5.2",
 ]
 
 [project.urls]
