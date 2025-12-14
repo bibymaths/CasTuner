@@ -31,6 +31,7 @@ dependencies = [
     "mkdocs-literate-nav>=0.6.2",
     "mkdocs-section-index>=0.3.10",
     "pymdown-extensions>=10.19",
+    "ipykernel>=6.31.0",
 ]
 
 [project.urls]
