@@ -4,7 +4,7 @@ type: software
 
 title: "CasTuner (Python Port): Reproducible modelling of repression and derepression dynamics"
 
-version: "0.1.1"
+version: "0.1.2"
 
 date-released: "2025-10-29"
 
