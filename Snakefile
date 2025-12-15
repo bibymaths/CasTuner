@@ -248,7 +248,10 @@ rule generate_report:
         f"{OUT_PARAMS}/candidate_selection_top10.csv",
         f"{OUT_PLOTS}/design_space_map.pdf",
         f"{OUT_PLOTS}/goodness_of_fit/gof_hill_fc_obs_vs_pred.pdf",
-        f"{OUT_PLOTS}/noise_kinetics/noise_vs_mean_BFP.pdf"
+        f"{OUT_PLOTS}/noise_kinetics/noise_vs_mean_BFP.pdf",
+        f"{OUT_PARAMS}/uq_sensitivity/sobol_indices_all.csv",
+        f"{OUT_PARAMS}/uq_sensitivity/bootstrap_params_and_metrics_all.csv",
+        f"{OUT_PLOTS}/uq_sensitivity/.ok"
     output:
         "report/CasTuner_summary_report.pdf"
     shell:
@@ -257,7 +260,7 @@ rule generate_report:
             "test -s {{output}}"
         ).format(
             uv=UV,
-            script=script("step_8_generate_report.py"),
+            script=script("step_9_generate_report.py"),
         )
 
 # --------------------------------------------------------------------------
@@ -282,10 +285,12 @@ rule uq_sensitivity:
             "{uv} {script} "
             "--params-dir {out_params} --plots-dir {out_plots} "
             "--nfc-dir {nfc} --timecourse-dir {tc} "
-            "&& test -s {out1} && test -s {out2}"
+            "&& test -s {out1} && test -s {out2} "
+            "&& mkdir -p {out_plots}/uq_sensitivity "
+            "&& touch {out_plots}/uq_sensitivity/.ok"
         ).format(
             uv=UV,
-            script=script("step_9_sensitivity_uncertainty_and_distributions.py"),
+            script=script("step_8_sensitivity_uncertainty_and_distributions.py"),
             out_params=OUT_PARAMS,
             out_plots=OUT_PLOTS,
             nfc=config["paths"]["nfc_dir"],
