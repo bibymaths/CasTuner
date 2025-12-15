@@ -1,44 +1,82 @@
 cff-version: 1.2.0
-message: "If you use this repository, please cite it and the original CasTuner article as below."
-title: "CasTuner (Python Port): Reproducible modelling of repression/derepression dynamics"
+
+type: software
+
+title: "CasTuner (Python Port): Reproducible modelling of repression and derepression dynamics"
+
 version: "0.1.1"
-date-released: 2025-10-29
-license: MIT
-url: "https://github.com/bibymaths/CasTuner"
-repository-code: "https://github.com/bibymaths/CasTuner"
+
+date-released: "2025-10-29"
+
+message: >
+  If you use this repository, please cite both this software and the original
+  CasTuner article listed in the references section.
+
+  Software citation
+  Mishra, A. (2025). CasTuner (Python Port): Reproducible modelling of repression/derepression dynamics (v0.1.1).
+  GitHub. https://github.com/bibymaths/CasTuner — MIT License.
+
+  Original CasTuner article
+  Noviello, G., Gjaltema, R. A. F., & Schulz, E. G.
+  CasTuner: a degron and CRISPR/Cas-based toolkit for analog tuning of endogenous gene expression.
+
 abstract: >
-  Independent Python reimplementation of the CasTuner analysis pipeline:
-  flow-cytometry preprocessing, kinetic parameter estimation (half-times, Hill curves),
-  and ODE-based simulations for CRISPR/Cas-based analog gene tuning. The workflow
-  preserves the R logic and adds Snakemake-based orchestration for end-to-end reproducibility.
+  Independent Python reimplementation of the CasTuner analysis pipeline for
+  CRISPR/Cas-based analog gene regulation. The workflow covers flow-cytometry
+  preprocessing, kinetic parameter estimation (half-times, Hill curves),
+  ODE-based repression and derepression simulations, uncertainty quantification,
+  and global sensitivity analysis. The implementation preserves the logic of
+  the original R workflow while adding Snakemake-based orchestration for
+  end-to-end reproducibility and scalability.
+
+authors:
+  - family-names: "Mishra"
+    given-names: "Abhinav"
+    orcid: "0009-0005-3179-7408"
+    affiliation: "Freie Universität Berlin"
+    city: "Berlin"
+    country: "DE"
+
+contact:
+  - family-names: "Mishra"
+    given-names: "Abhinav"
+    email: "mishraabhinav36@gmail.com"
+
+license: MIT
+
+license-url: "https://opensource.org/licenses/MIT"
+
+repository-code: "https://github.com/bibymaths/CasTuner"
+
+url: "https://github.com/bibymaths/CasTuner"
 
 keywords:
   - CRISPR
   - Cas
   - degron
   - analog gene tuning
+  - gene regulation
   - flow cytometry
   - ODE modelling
-  - kinetic parameters
+  - kinetic modelling
   - Hill function
+  - uncertainty quantification
+  - sensitivity analysis
   - Snakemake
   - reproducible research
   - Python
 
-authors:
-  - family-names: "Mishra"
-    given-names: "Abhinav"
-
 preferred-citation:
   type: software
-  title: "CasTuner (Python Port): Reproducible modelling of repression/derepression dynamics"
-  version: "0.1.0"
+  title: "CasTuner (Python Port): Reproducible modelling of repression and derepression dynamics"
   authors:
     - family-names: "Mishra"
       given-names: "Abhinav"
-  url: "https://github.com/bibymaths/CasTuner"
-  date-released: 2025-10-29
+  version: "0.1.1"
+  date-released: "2025-10-29"
   license: MIT
+  repository-code: "https://github.com/bibymaths/CasTuner"
+  url: "https://github.com/bibymaths/CasTuner"
 
 references:
   - type: article
@@ -50,6 +88,27 @@ references:
         given-names: "Rutger A. F."
       - family-names: "Schulz"
         given-names: "Edda G."
-    notes: >
-      Original CasTuner article associated with the R workflow on which this Python
-      port is based. Please cite alongside the software when appropriate.
+    journal: "Nature Communications"
+    year: 2020
+    doi: "10.1038/s41467-020-17654-8"
+    scope: >
+      Original CasTuner publication describing the biological system and
+      R-based analysis workflow on which this Python reimplementation is based.
+
+  - type: article
+    title: "Software citation principles"
+    authors:
+      - family-names: "Smith"
+        given-names: "A. M."
+      - family-names: "Katz"
+        given-names: "D. S."
+      - family-names: "Niemeyer"
+        given-names: "K. E."
+      - name: "FORCE11 Software Citation Working Group"
+    journal: "PeerJ Computer Science"
+    volume: 2
+    year: 2016
+    doi: "10.7717/peerj-cs.86"
+    scope: >
+      General principles for software citation followed in the preparation of
+      this citation metadata.
