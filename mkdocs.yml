@@ -58,6 +58,7 @@ nav:
       - Step 5 – Design Scan: step5_design_scan.md
       - Step 6 – Goodness of Fit: step6_gof.md
       - Step 7 – Design Selection: step7_selection.md
+      - Step 8 - Uncertainty Quantification & Sensitivity Analysis: step8_uncertainity_sens.md
   - Reproducibility: reproducibility.md
   - References: references.md
   - API Reference: api/index.md
