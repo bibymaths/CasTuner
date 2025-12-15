@@ -56,11 +56,13 @@ def parse_args():
     ap.add_argument("--params-dir", default="parameters", help="Parameters output dir (from config.yaml)")
     ap.add_argument("--plots-dir", default="plots", help="Plots output dir (from config.yaml)")
     ap.add_argument("--nfc-dir", default="fcs_files/NFC", help="NFC directory (from config.yaml)")
-    ap.add_argument("--timecourse-dir", default="fcs_files/time-course_data", help="Timecourse directory (from config.yaml)")
+    ap.add_argument("--timecourse-dir", default="fcs_files/time-course_data",
+                    help="Timecourse directory (from config.yaml)")
     ap.add_argument("--sobol-base", type=int, default=512)
     ap.add_argument("--n-boot", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=13)
     return ap.parse_args()
+
 
 @contextlib.contextmanager
 def quiet():
@@ -76,6 +78,7 @@ def quiet():
         with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
             yield
 
+
 # ---------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------
@@ -90,6 +93,7 @@ OUT_PARAM = PARAM_PATH / "uq_sensitivity"
 OUT_PLOTS = PLOTS_PATH / "uq_sensitivity"
 OUT_PARAM.mkdir(parents=True, exist_ok=True)
 OUT_PLOTS.mkdir(parents=True, exist_ok=True)
+
 
 # ---------------------------------------------------------------------
 # Small utilities
@@ -140,6 +144,7 @@ def _norm_cols(df: pd.DataFrame) -> pd.DataFrame:
                   .str.replace(r"[\s\-]+", "_", regex=True))
     return df
 
+
 def _normalize_plasmid_labels(s: pd.Series) -> pd.Series:
     """
     Normalize plasmid labels to standard SP* format.
@@ -168,6 +173,7 @@ def _normalize_plasmid_labels(s: pd.Series) -> pd.Series:
     # Also handle SP430ABA -> SP430A even if it starts with SP
     out = out.replace({"SP430ABA": "SP430A"})
     return out
+
 
 def saveplot(path: Path):
     """
@@ -719,11 +725,105 @@ def make_kd_simulator(fitted_row: dict):
     return _sim
 
 
+# Define a helper function for plasmid processing
+def process_plasmid(pl, rev, kd, fitted_core, ARGS):
+    """
+    Process one plasmid for both REV and KD models.
+
+    Args:
+        pl (str): Plasmid identifier.
+        rev (pd.DataFrame): REV dataset.
+        kd (pd.DataFrame): KD dataset.
+        fitted_core (pd.DataFrame): Fitted parameters core table.
+        ARGS: Command-line arguments.
+
+    Returns:
+        tuple: (sob_list, boot_list) containing Sobol and bootstrap results.
+    """
+    row = fitted_core.query("plasmid == @pl")
+    if row.empty:
+        return None, None
+    row = row.iloc[0].to_dict()
+
+    # Pull observed ICs for REV
+    rev_pl = rev.query("plasmid == @pl").copy()
+    kd_pl = kd.query("plasmid == @pl").copy()
+
+    if not rev_pl.empty:
+        mean_fc = rev_pl.groupby("time", as_index=False)[["fc.cherry", "norm.bfp"]].mean()
+        t0 = mean_fc.query("time == 0")
+        if not t0.empty:
+            R0 = float(t0["norm.bfp"].iloc[0])
+            Y0 = float(t0["fc.cherry"].iloc[0])
+        else:
+            R0, Y0 = 0.0, 1.0
+    else:
+        R0, Y0 = 0.0, 1.0
+
+    sob_list = []
+    boot_list = []
+
+    # REV processing (copy the if block logic here)
+    if not rev_pl.empty and np.isfinite(_safe_float(row.get("t_down"))) and np.isfinite(
+            _safe_float(row.get("delay_rev"))):
+        fitted = {
+            "t_down": float(row["t_down"]),
+            "t_down_se": float(row.get("t_down_se", np.nan)),
+            "K": float(row["K"]),
+            "n": float(row["n"]),
+            "alpha": float(row["alpha"]),
+            "delay_rev": float(row["delay_rev"]),
+        }
+        fitted_row = {"R0": R0, "Y0": Y0}
+        bounds = {
+            "t_down": make_bounds(fitted["t_down"], se=fitted.get("t_down_se"), rel=0.35, lo=1e-4),
+            "K": make_bounds(fitted["K"], se=None, rel=0.35, lo=1e-9),
+            "n": make_bounds(fitted["n"], se=None, rel=0.35, lo=1e-6),
+            "alpha": make_bounds(fitted["alpha"], se=None, rel=0.25, lo=1e-9),
+            "delay_rev": (0.0, 25.0),
+        }
+        sim_func = make_rev_simulator(fitted_row)
+        sob, boot = run_one_model("REV", pl, rev_pl, fitted, bounds, sim_func, n_sobol_base=ARGS.sobol_base,
+                                  n_boot=ARGS.n_boot, seed=ARGS.seed)
+        if sob is not None and not sob.empty:
+            sob_list.append(sob)
+        if boot is not None and not boot.empty:
+            boot_list.append(boot)
+
+    # KD processing (copy the if block logic here)
+    if not kd_pl.empty and np.isfinite(_safe_float(row.get("t_up"))) and np.isfinite(_safe_float(row.get("delay_kd"))):
+        fitted = {
+            "t_up": float(row["t_up"]),
+            "t_up_se": float(row.get("t_up_se", np.nan)),
+            "K": float(row["K"]),
+            "n": float(row["n"]),
+            "alpha": float(row["alpha"]),
+            "delay_kd": float(row["delay_kd"]),
+        }
+        bounds = {
+            "t_up": make_bounds(fitted["t_up"], se=fitted.get("t_up_se"), rel=0.35, lo=1e-4),
+            "K": make_bounds(fitted["K"], se=None, rel=0.35, lo=1e-9),
+            "n": make_bounds(fitted["n"], se=None, rel=0.35, lo=1e-6),
+            "alpha": make_bounds(fitted["alpha"], se=None, rel=0.25, lo=1e-9),
+            "delay_kd": (0.0, 25.0),
+        }
+        sim_func = make_kd_simulator({})
+        sob, boot = run_one_model("KD", pl, kd_pl, fitted, bounds, sim_func, n_sobol_base=ARGS.sobol_base,
+                                  n_boot=ARGS.n_boot, seed=ARGS.seed)
+        if sob is not None and not sob.empty:
+            sob_list.append(sob)
+        if boot is not None and not boot.empty:
+            boot_list.append(boot)
+
+    print(f"Completed plasmid {pl}")
+
+    return sob_list, boot_list
+
+
 # ---------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------
 def main():
-
     # Load fitted parameter tables
     up, down, hill, alpha, alpha_mode, alpha_val, delays_rev, delays_kd = load_fitted_tables()
 
@@ -788,107 +888,20 @@ def main():
 
     all_sobol = []
     all_boot = []
+    plasmids = sorted(set(fitted_core["plasmid"].dropna().astype(str)))
 
-    # Run per plasmid
-    for pl in sorted(set(fitted_core["plasmid"].dropna().astype(str))):
-        row = fitted_core.query("plasmid == @pl")
-        if row.empty:
-            continue
-        row = row.iloc[0].to_dict()
+    # Parallel execution & print progress
+    print(f"[INFO] Running sensitivity/UQ for {len(plasmids)} plasmids...")
 
-        # Pull observed ICs for REV from time==0 mean (like GOF)
-        rev_pl = rev.query("plasmid == @pl").copy()
-        kd_pl = kd.query("plasmid == @pl").copy()
+    results = Parallel(n_jobs=-1, backend='multiprocessing')(
+        delayed(process_plasmid)(pl, rev, kd, fitted_core, ARGS) for pl in plasmids)
 
-        if not rev_pl.empty:
-            mean_fc = rev_pl.groupby("time", as_index=False)[["fc.cherry", "norm.bfp"]].mean()
-            t0 = mean_fc.query("time == 0")
-            if not t0.empty:
-                R0 = float(t0["norm.bfp"].iloc[0])
-                Y0 = float(t0["fc.cherry"].iloc[0])
-            else:
-                R0, Y0 = 0.0, 1.0
-        else:
-            R0, Y0 = 0.0, 1.0
+    print("[INFO] Completed all plasmids.")
 
-        # -----------------------------------------------------------------
-        # REV
-        # -----------------------------------------------------------------
-        if not rev_pl.empty and np.isfinite(_safe_float(row.get("t_down"))) and np.isfinite(
-                _safe_float(row.get("delay_rev"))):
-            fitted = {
-                "t_down": float(row["t_down"]),
-                "t_down_se": float(row.get("t_down_se", np.nan)),
-                "K": float(row["K"]),
-                "n": float(row["n"]),
-                "alpha": float(row["alpha"]),
-                "delay_rev": float(row["delay_rev"]),
-            }
-            fitted_row = {"R0": R0, "Y0": Y0}
-
-            bounds = {
-                "t_down": make_bounds(fitted["t_down"], se=fitted.get("t_down_se"), rel=0.35, lo=1e-4),
-                "K": make_bounds(fitted["K"], se=None, rel=0.35, lo=1e-9),
-                "n": make_bounds(fitted["n"], se=None, rel=0.35, lo=1e-6),
-                "alpha": make_bounds(fitted["alpha"], se=None, rel=0.25, lo=1e-9),
-                "delay_rev": (0.0, 25.0),
-            }
-            sim_func = make_rev_simulator(fitted_row)
-
-            sob, boot = run_one_model(
-                model_name="REV",
-                plasmid=pl,
-                data_df=rev_pl,
-                fitted=fitted,
-                bounds=bounds,
-                sim_func=sim_func,
-                n_sobol_base=ARGS.sobol_base,
-                n_boot=ARGS.n_boot,
-                seed=ARGS.seed
-            )
-
-            if sob is not None and not sob.empty:
-                all_sobol.append(sob)
-            if boot is not None and not boot.empty:
-                all_boot.append(boot)
-
-        # -----------------------------------------------------------------
-        # KD
-        # -----------------------------------------------------------------
-        if not kd_pl.empty and np.isfinite(_safe_float(row.get("t_up"))) and np.isfinite(
-                _safe_float(row.get("delay_kd"))):
-            fitted = {
-                "t_up": float(row["t_up"]),
-                "t_up_se": float(row.get("t_up_se", np.nan)),
-                "K": float(row["K"]),
-                "n": float(row["n"]),
-                "alpha": float(row["alpha"]),
-                "delay_kd": float(row["delay_kd"]),
-            }
-            bounds = {
-                "t_up": make_bounds(fitted["t_up"], se=fitted.get("t_up_se"), rel=0.35, lo=1e-4),
-                "K": make_bounds(fitted["K"], se=None, rel=0.35, lo=1e-9),
-                "n": make_bounds(fitted["n"], se=None, rel=0.35, lo=1e-6),
-                "alpha": make_bounds(fitted["alpha"], se=None, rel=0.25, lo=1e-9),
-                "delay_kd": (0.0, 25.0),
-            }
-            sim_func = make_kd_simulator({})
-
-            sob, boot = run_one_model(
-                model_name="KD",
-                plasmid=pl,
-                data_df=kd_pl,
-                fitted=fitted,
-                bounds=bounds,
-                sim_func=sim_func,
-                n_sobol_base=512,
-                n_boot=2000,
-                seed=17
-            )
-            if sob is not None and not sob.empty:
-                all_sobol.append(sob)
-            if boot is not None and not boot.empty:
-                all_boot.append(boot)
+    # Aggregate results
+    for sob_list, boot_list in results:
+        all_sobol.extend(sob_list)
+        all_boot.extend(boot_list)
 
     # Aggregate outputs
     if all_sobol:

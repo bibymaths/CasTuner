@@ -7,7 +7,8 @@
 
 ## Biological question
 
-> Can a simple ODE model explain the observed dynamics of derepression and repression, and what delays and decay rates does it imply?
+> Can a simple ODE model explain the observed dynamics of derepression and repression, and what delays and decay rates
+> does it imply?
 
 We want a **mechanistic** description of:
 
@@ -20,8 +21,8 @@ We want a **mechanistic** description of:
 - `parameters/half_times_downregulation.csv`
 - `parameters/Hill_parameters.csv`
 - Time-course `.fcs` data for:
-  - **derepression** (repressor going down),
-  - **repression** (repressor going up),
+    - **derepression** (repressor going down),
+    - **repression** (repressor going up),
 - Configuration of which construct/experiment to treat as “reference” for α.
 
 ## Model
@@ -74,17 +75,17 @@ where:
 ## Derepression (Step 2)
 
 - Use derepression time-course:
-  - repressor drops after dTAG addition,
-  - target recovers.
+    - repressor drops after dTAG addition,
+    - target recovers.
 
 Procedure:
 
 1. Fix Hill K and n from the dose–response fit.
 2. Choose a reference construct/time course to fit **α (mCherry degradation rate)**.
 3. For each construct:
-   - integrate ODE for candidate delays Δt over a time grid,
-   - compare simulated Y(t) to measured fold-change curve,
-   - pick Δt that minimises MAE.
+    - integrate ODE for candidate delays Δt over a time grid,
+    - compare simulated Y(t) to measured fold-change curve,
+    - pick Δt that minimises MAE.
 4. Save per-construct delays for derepression.
 
 Outputs:
@@ -114,8 +115,8 @@ Outputs:
 
 - α (mCherry degradation rate) sets the **baseline turnover** of the reporter.
 - Larger `Δt` values indicate:
-  - additional layers between repressor and reporter (e.g. chromatin or network delays),
-  - or slower establishment of the effective repression state.
+    - additional layers between repressor and reporter (e.g. chromatin or network delays),
+    - or slower establishment of the effective repression state.
 
 Comparing Δt for derepression vs repression helps distinguish:
 

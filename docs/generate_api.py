@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 SCRIPTS_DIR = ROOT / "scripts"
-API_DIR = Path("docs/api")       # final Markdown will be placed here
+API_DIR = Path("docs/api")  # final Markdown will be placed here
 
 API_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -18,7 +18,7 @@ def python_modules(base=SCRIPTS_DIR):
         for f in files:
             if f.endswith(".py") and not f.startswith("__"):
                 full = Path(root) / f
-                rel = full.relative_to(ROOT)        # scripts/... path
+                rel = full.relative_to(ROOT)  # scripts/... path
                 module = ".".join(rel.with_suffix("").parts)
                 yield module
 
@@ -34,7 +34,6 @@ with index.open("w") as f:
     for module in sorted(python_modules()):
         name = module.split(".")[-1]
         f.write(f"- [{name}](./{module}.md)\n")
-
 
 # -------------------------------
 # Create one page per module

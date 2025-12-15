@@ -2,14 +2,15 @@
 
 ## Overview
 
-The pipeline is driven by **flow cytometry time courses and dose–response experiments** for different CasTuner constructs and cell lines.
+The pipeline is driven by **flow cytometry time courses and dose–response experiments** for different CasTuner
+constructs and cell lines.
 
 The key data sources are:
 
 - `.fcs` files with:
-  - **non-fluorescent controls (NFC)**,
-  - **time-course** experiments (repression/derepression),
-  - **dose–response** experiments (dTAG titration).
+    - **non-fluorescent controls (NFC)**,
+    - **time-course** experiments (repression/derepression),
+    - **dose–response** experiments (dTAG titration).
 
 All input paths are configured in `config.yaml`.
 
@@ -45,14 +46,14 @@ Two core dynamic experiments:
 - **Repression (upregulation of repressor)**  
   Cells are shifted from high dTAG (repressor degraded) to lower dTAG.  
   Measured over ~6 days:
-  - tBFP (repressor) trajectories,
-  - mCherry/EGFP (target) trajectories.
+    - tBFP (repressor) trajectories,
+    - mCherry/EGFP (target) trajectories.
 
 - **Derepression (degradation of repressor)**  
   After sustained repression (low dTAG), dTAG is re-added.  
   Measured over ~6 days:
-  - rapid loss of tBFP,
-  - slower recovery of mCherry/EGFP.
+    - rapid loss of tBFP,
+    - slower recovery of mCherry/EGFP.
 
 These experiments constrain:
 
@@ -64,9 +65,9 @@ These experiments constrain:
 Cells are kept long enough at different dTAG doses to reach **steady state**:
 
 - For each dose:
-  - quantify repressor levels (tBFP),
-  - quantify target output (mCherry or EGFP),
-  - build **dose–response curves** (normalized BFP vs fold-change in target).
+    - quantify repressor levels (tBFP),
+    - quantify target output (mCherry or EGFP),
+    - build **dose–response curves** (normalized BFP vs fold-change in target).
 
 The pipeline fits Hill functions to these curves.
 
@@ -76,9 +77,9 @@ The same `.fcs` data also gives:
 
 - full **single-cell distributions** of BFP and mCherry/EGFP,
 - from which we derive per-condition:
-  - mean,
-  - variance,
-  - **CV²**.
+    - mean,
+    - variance,
+    - **CV²**.
 
 A simple hierarchical model summarises:
 

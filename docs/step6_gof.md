@@ -27,28 +27,28 @@ We want to check:
 
 1. **Rebuild predicted curves**
 
-   - For each construct:
-     - use Hill parameters to compute predicted fold-change across the observed BFP range,
-     - use ODE parameters to re-simulate mCherry time courses.
+    - For each construct:
+        - use Hill parameters to compute predicted fold-change across the observed BFP range,
+        - use ODE parameters to re-simulate mCherry time courses.
 
 2. **Overlay with observed data**
 
-   - scatter plots of:
-     - observed vs predicted fold-change (Hill),
-     - observed vs predicted mCherry at each time point (ODE).
+    - scatter plots of:
+        - observed vs predicted fold-change (Hill),
+        - observed vs predicted mCherry at each time point (ODE).
 
 3. **Compute fit statistics**
 
    For each construct:
 
-   - R² (coefficient of determination),
-   - MAE or RMSE,
-   - possibly residual diagnostics.
+    - R² (coefficient of determination),
+    - MAE or RMSE,
+    - possibly residual diagnostics.
 
 4. **Summarise**
 
-   - per-construct summary table of goodness-of-fit,
-   - global histogram/boxplots of fit quality.
+    - per-construct summary table of goodness-of-fit,
+    - global histogram/boxplots of fit quality.
 
 ## Outputs
 
@@ -59,7 +59,7 @@ We want to check:
 
 - High R² and low MAE → model is capturing the essential behaviour.
 - Systematic deviations:
-  - might reveal missing processes (e.g. extra delays, feedback),
-  - or parameter regimes where the simple Hill + first-order decay is insufficient.
+    - might reveal missing processes (e.g. extra delays, feedback),
+    - or parameter regimes where the simple Hill + first-order decay is insufficient.
 
 This step is a sanity check before we take the design-space scan and design ranking too seriously.

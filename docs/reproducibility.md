@@ -24,9 +24,9 @@ The core analysis is orchestrated by the `Snakefile`:
 - `snakemake -j 4`  
   runs the full pipeline and generates:
 
-  - intermediate parameter tables in `parameters/`,
-  - diagnostic plots in `plots/`,
-  - final integrated report in `report/`.
+    - intermediate parameter tables in `parameters/`,
+    - diagnostic plots in `plots/`,
+    - final integrated report in `report/`.
 
 The rules:
 
@@ -48,7 +48,8 @@ The pipeline is designed to be **deterministic** given the same inputs:
 * optimisation uses `scipy.optimize.curve_fit` with explicit initial guesses,
 * plotting is scripted and does not involve random jitter.
 
-Any remaining variability (e.g. due to local BLAS/OpenMP threading) should be minor and not affect qualitative conclusions.
+Any remaining variability (e.g. due to local BLAS/OpenMP threading) should be minor and not affect qualitative
+conclusions.
 
 ## Validation vs original R workflow
 
@@ -65,10 +66,11 @@ Results:
 * parameter *rankings* and curve shapes match very closely,
 * absolute values differ modestly, consistent with:
 
-  * different ODE solvers (`deSolve::lsoda` vs `solve_ivp`),
-  * different non-linear optimisers and tolerance settings.
+    * different ODE solvers (`deSolve::lsoda` vs `solve_ivp`),
+    * different non-linear optimisers and tolerance settings.
 
-In short, the Python implementation captures the same **biological trends and quantitative behaviour** as the original R code, while being easier to integrate into modern Python-based analysis pipelines.
+In short, the Python implementation captures the same **biological trends and quantitative behaviour** as the original R
+code, while being easier to integrate into modern Python-based analysis pipelines.
 
 ## Extending the pipeline
 
@@ -77,9 +79,9 @@ You can:
 * add new steps as additional scripts + Snakemake rules,
 * plug in alternative models (e.g. multi-state chromatin models) by reusing:
 
-  * the data loading,
-  * gating,
-  * and plotting utilities already present.
+    * the data loading,
+    * gating,
+    * and plotting utilities already present.
 
 The documentation for each step should give you enough context to do this without breaking the global narrative.
 

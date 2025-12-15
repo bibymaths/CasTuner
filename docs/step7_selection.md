@@ -25,33 +25,33 @@ Using results from the design-space scan, we construct:
 
 1. **Filter designs**
 
-   - optionally remove poor-fitting constructs or parameter sets with bad GOF,
-   - focus on designs that:
-     - operate in a desired dynamic-range window,
-     - avoid extreme delays or unrealistic half-times.
+    - optionally remove poor-fitting constructs or parameter sets with bad GOF,
+    - focus on designs that:
+        - operate in a desired dynamic-range window,
+        - avoid extreme delays or unrealistic half-times.
 
 2. **Define scoring criteria**
 
    Example components:
 
-   - dynamic range score (higher is better),
-   - speed score (lower t₅₀ is better),
-   - smoothness/overshoot penalties,
-   - consistency with experimentally observed behaviour.
+    - dynamic range score (higher is better),
+    - speed score (lower t₅₀ is better),
+    - smoothness/overshoot penalties,
+    - consistency with experimentally observed behaviour.
 
    Composite score `S` can be a weighted sum or multi-objective ranking.
 
 3. **Rank designs**
 
-   - assign scores to real constructs and simulated parameter sets,
-   - rank by `S` descending.
+    - assign scores to real constructs and simulated parameter sets,
+    - rank by `S` descending.
 
 4. **Map design space**
 
-   - visualise designs in 2D or 3D projections, e.g.:
-     - K vs n coloured by performance,
-     - t₅₀ vs dynamic range,
-     - delay vs half-time.
+    - visualise designs in 2D or 3D projections, e.g.:
+        - K vs n coloured by performance,
+        - t₅₀ vs dynamic range,
+        - delay vs half-time.
 
 ## Outputs
 
