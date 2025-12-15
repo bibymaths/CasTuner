@@ -18,35 +18,35 @@ We model this with a Hill function to capture non-linearity and potential cooper
 ## Inputs
 
 - Dose–response `.fcs` data:
-  - cells grown at different dTAG-13 concentrations until steady state (e.g. 4 days),
+    - cells grown at different dTAG-13 concentrations until steady state (e.g. 4 days),
 - NFC controls for background subtraction,
 - Metadata describing which files correspond to which:
-  - construct,
-  - guide set (targeting vs NTC),
-  - dTAG dose.
+    - construct,
+    - guide set (targeting vs NTC),
+    - dTAG dose.
 
 ## Method
 
 1. **Gating and background subtraction**
-   - same gating strategy as in Step 1,
-   - compute NFC-subtracted medians for BFP and mCherry/EGFP.
+    - same gating strategy as in Step 1,
+    - compute NFC-subtracted medians for BFP and mCherry/EGFP.
 
 2. **Normalisation**
-   - **Repressor axis (input)**:
-     - per construct, apply min–max normalisation to BFP:
-        $$
-        x = \frac{BFP - BFP_\text{min}}{BFP_\text{max}-BFP_\text{min}}
-        $$
-       - this gives a dose-scaled “repressor activity” between 0 and 1.
-   - **Target axis (output)**:
-     - compute fold-change in mCherry/EGFP relative to NTC controls at high dTAG.
+    - **Repressor axis (input)**:
+        - per construct, apply min–max normalisation to BFP:
+          $$
+          x = \frac{BFP - BFP_\text{min}}{BFP_\text{max}-BFP_\text{min}}
+          $$
+            - this gives a dose-scaled “repressor activity” between 0 and 1.
+    - **Target axis (output)**:
+        - compute fold-change in mCherry/EGFP relative to NTC controls at high dTAG.
 
 3. **Hill function fitting**
 
 We fit:
 
 $$
-\text{FC}(x) = y_\text{min} + 
+\text{FC}(x) = y_\text{min} +
 \frac{y_\text{max} - y_\text{min}}{1 + \left(\frac{x}{K}\right)^n}
 $$
 
@@ -68,20 +68,20 @@ Parameters are estimated by non-linear least squares (`scipy.optimize.curve_fit`
 ## Outputs
 
 - `parameters/Hill_parameters.csv` with columns:
-  - construct, assay type,
-  - `K`, `n`, `y_min`, `y_max`,
-  - fit diagnostics.
+    - construct, assay type,
+    - `K`, `n`, `y_min`, `y_max`,
+    - fit diagnostics.
 - Plots in `plots/hill_curves/`.
 
 ## How to interpret
 
 - **K (midpoint)**:
-  - small K → construct responds strongly already at low repressor levels,
-  - large K → construct needs higher repressor levels to repress strongly.
+    - small K → construct responds strongly already at low repressor levels,
+    - large K → construct needs higher repressor levels to repress strongly.
 
 - **n (Hill coefficient)**:
-  - `n ≈ 1` → graded, almost linear response,
-  - `n >> 1` → switch-like behavior,
-  - `n < 1` → shallower-than-linear response.
+    - `n ≈ 1` → graded, almost linear response,
+    - `n >> 1` → switch-like behavior,
+    - `n < 1` → shallower-than-linear response.
 
 These Hill parameters are *reused directly* in the ODE model to connect repressor trajectories to mCherry dynamics.

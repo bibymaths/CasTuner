@@ -131,13 +131,14 @@ def mirror_plots() -> None:
 
 def mirror_tables() -> None:
     """
-    Mirror all CSVs from `parameters/` into `report/tables/`.
+    Mirror all CSVs from `parameters/` (including subfolders) into `report/tables/`.
     """
     print("[info] Mirroring tables into report/tables ...")
-    for csv in PARAM_PATH.glob("*.csv"):
-        target_csv = REPORT_TABLES / csv.name
+    for csv in PARAM_PATH.rglob("*.csv"):
+        rel = csv.relative_to(PARAM_PATH)
+        target_csv = REPORT_TABLES / rel
+        target_csv.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(csv, target_csv)
-
 
 def load_csv(name: str) -> Optional[pd.DataFrame]:
     """
@@ -207,10 +208,15 @@ def summarize_hill(df: pd.DataFrame) -> str:
     Summary for Hill_parameters.csv table.
     """
     df = df.copy()
-    if "k" not in df.columns and "K" in df.columns:
-        df = df.rename(columns={"K": "k"})
-    if "k" not in df.columns or "n" not in df.columns:
-        return "Hill_parameters.csv must contain columns 'K/k' and 'n'."
+    cols = {c: c.strip() for c in df.columns}
+    df = df.rename(columns=cols)
+
+    # accept K/k in any capitalization
+    if "k" not in df.columns:
+        for alt in ("K", "k", "midpoint", "ec50"):
+            if alt in df.columns:
+                df = df.rename(columns={alt: "k"})
+                break
 
     n_rows = len(df)
     k_vals = df["k"].to_numpy(float)
@@ -411,6 +417,72 @@ def summarize_design_space(design_df: Optional[pd.DataFrame],
         return intro + "Summary statistics could not be extracted from the table."
     return intro + " ".join(txt)
 
+def summarize_sobol_global(sobol_all: Optional[pd.DataFrame]) -> str:
+    """
+    Summarize global Sobol indices (uq_sensitivity/sobol_indices_all.csv).
+    Expected cols: model, metric, param, ST.
+    """
+    if sobol_all is None or sobol_all.empty:
+        return "Global Sobol sensitivity results were not available."
+
+    df = sobol_all.copy()
+    need = {"model", "metric", "param", "ST"}
+    if not need.issubset(df.columns):
+        return f"sobol_indices_all.csv missing expected columns: {sorted(need)}."
+
+    agg = (df.groupby(["model", "metric", "param"], as_index=False)["ST"]
+             .mean()
+             .rename(columns={"ST": "ST_mean"}))
+
+    lines = []
+    for (model, metric), sub in agg.groupby(["model", "metric"]):
+        sub = sub.sort_values("ST_mean", ascending=False).head(3)
+        tops = ", ".join([f"{r['param']} (ST≈{r['ST_mean']:.2f})" for _, r in sub.iterrows()])
+        lines.append(f"{model} / {metric}: top drivers are {tops}.")
+
+    return (
+        "Sobol total-order sensitivity (ST) quantifies which fitted parameters most strongly "
+        "control each performance metric under the ODE model.\n\n"
+        + "\n".join(lines)
+    )
+
+
+def summarize_bootstrap_global(boot_all: Optional[pd.DataFrame]) -> str:
+    """
+    Summarize bootstrap distributions (uq_sensitivity/bootstrap_params_and_metrics_all.csv).
+    """
+    if boot_all is None or boot_all.empty:
+        return "Bootstrap uncertainty results were not available."
+
+    df = boot_all.copy()
+    if "model" not in df.columns or "plasmid" not in df.columns:
+        return "bootstrap_params_and_metrics_all.csv missing 'model'/'plasmid' columns."
+
+    metrics = [c for c in ["dynamic_range", "t50", "t10_90", "overshoot", "auc", "y_end"] if c in df.columns]
+    if not metrics:
+        return "Bootstrap table did not contain expected metric columns."
+
+    parts = []
+    for model, sub in df.groupby("model"):
+        lines = []
+        for m in metrics:
+            v = sub[m].to_numpy(float)
+            v = v[np.isfinite(v)]
+            if v.size < 50:
+                continue
+            q2, q50, q97 = np.percentile(v, [2.5, 50, 97.5])
+            lines.append(f"{m}: median≈{q50:.3g}, 95%≈[{q2:.3g}, {q97:.3g}]")
+        if lines:
+            parts.append(f"{model}: " + "; ".join(lines))
+
+    if not parts:
+        return "Bootstrap summaries could not be extracted (too few finite values)."
+
+    return (
+        "Bootstrap uncertainty propagates measurement and fit uncertainty through the ODE model "
+        "to generate distributions over predicted behaviors.\n\n"
+        + "\n".join(parts)
+    )
 
 # -------------------------------------------------------------------------
 # Experimental knobs
@@ -531,17 +603,26 @@ def add_paragraph(story, text, styles):
         story.append(Spacer(1, 0.2 * cm))
 
 
-def add_plot_if_available(
-        story, relative_plot: str, caption: str, styles, width_cm: float = 14.0
-):
+def add_plot_if_available(story, relative_plot: str, caption: str, styles, width_cm: float = 14.0):
     """
-    Embed a PNG version of a plot into the report if present in report/plots.
+    Embed a plot into the report if present in report/plots.
+    Prefer PNG (created via ImageMagick). If missing, try embedding the PDF directly.
     """
-    png_path = REPORT_PLOTS / relative_plot
-    png_path = png_path.with_suffix(".png")
-    if not png_path.exists():
+    base = REPORT_PLOTS / relative_plot
+    png_path = base.with_suffix(".png")
+    pdf_path = base.with_suffix(".pdf")
+
+    img_path = None
+    if png_path.exists():
+        img_path = png_path
+    elif pdf_path.exists():
+        # reportlab can embed PDFs as images only in limited cases;
+        # but often it works when Ghostscript is installed.
+        img_path = pdf_path
+    else:
         return
-    img = Image(str(png_path), width=width_cm * cm, height=(width_cm * 0.65) * cm)
+
+    img = Image(str(img_path), width=width_cm * cm, height=(width_cm * 0.65) * cm)
     story.append(img)
     story.append(Spacer(1, 0.15 * cm))
     story.append(Paragraph(caption, styles["Italic"]))
@@ -713,10 +794,95 @@ def build_report():
     )
 
     # ------------------------------------------------------------------
+    # Step 9: Sensitivity + uncertainty (tables)
+    # ------------------------------------------------------------------
+    centers = load_csv("uq_sensitivity/fitted_parameter_centers.csv")
+    sobol_all = load_csv("uq_sensitivity/sobol_indices_all.csv")
+    boot_all = load_csv("uq_sensitivity/bootstrap_params_and_metrics_all.csv")
+    # ------------------------------------------------------------------
+    # Section: Sensitivity + uncertainty (Step 9)
+    # ------------------------------------------------------------------
+    story.append(PageBreak())
+    add_heading(story, "8. Sensitivity and Uncertainty Analysis", styles, lvl=1)
+
+    add_heading(story, "8.1 Global parameter sensitivity (Sobol)", styles, lvl=2)
+    add_paragraph(story, summarize_sobol_global(sobol_all), styles)
+
+    # Include the global mean Sobol plots (compact, high signal)
+    for model in ["REV", "KD"]:
+        for metric in ["dynamic_range", "t50", "t10_90", "overshoot", "auc", "y_end"]:
+            add_plot_if_available(
+                story,
+                f"uq_sensitivity/{model}_sobol_ST_mean_{metric}.pdf",
+                f"Mean Sobol ST across plasmids for {model} (metric={metric}).",
+                styles,
+                width_cm=15.0,
+            )
+
+    add_heading(story, "8.2 Bootstrap uncertainty (global distributions)", styles, lvl=2)
+    add_paragraph(story, summarize_bootstrap_global(boot_all), styles)
+
+    # Representative predictive-band overlays
+    REPRESENTATIVE = {
+        "REV": ["SP430", "SP428"],
+        "KD":  ["SP411", "SP430A"],
+    }
+
+    def _plot_exists(rel_pdf: str) -> bool:
+        return (REPORT_PLOTS / rel_pdf).with_suffix(".png").exists() or (REPORT_PLOTS / rel_pdf).with_suffix(
+            ".pdf").exists()
+
+    # keep only plasmids that have the overlay plot available
+    REPRESENTATIVE = {
+        m: [pl for pl in pls if _plot_exists(f"uq_sensitivity/{m}_{pl}_predictive_band_overlay.pdf")]
+        for m, pls in REPRESENTATIVE.items()
+    }
+
+    if centers is not None and not centers.empty:
+        add_paragraph(story, "Table – Fitted parameter centers used for sensitivity/UQ (first 6 columns):", styles)
+        cols = list(centers.columns[:6])
+        data = [cols] + [list(map(str, row)) for row in centers[cols].head(12).values.tolist()]
+        table = Table(data, hAlign="LEFT")
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 0.4 * cm))
+
+    add_heading(story, "8.3 Representative predictive bands", styles, lvl=2)
+    add_paragraph(
+        story,
+        "Shown are representative constructs to illustrate how parameter uncertainty propagates "
+        "into predicted trajectories. Bands are 95% predictive intervals overlaid with the observed mean.",
+        styles,
+    )
+
+    for model, pls in REPRESENTATIVE.items():
+        for pl in pls:
+            add_plot_if_available(
+                story,
+                f"uq_sensitivity/{model}_{pl}_predictive_band_overlay.pdf",
+                f"{model} {pl}: 95% predictive band vs observed mean trajectory.",
+                styles,
+                width_cm=15.0,
+            )
+
+            # One mechanistic sensitivity plot per example (dynamic_range is the most interpretable)
+            add_plot_if_available(
+                story,
+                f"uq_sensitivity/{model}_{pl}_sobol_ST_dynamic_range.pdf",
+                f"{model} {pl}: sensitivity of dynamic range (Sobol ST).",
+                styles,
+                width_cm=15.0,
+            )
+
+    # ------------------------------------------------------------------
     # Final remarks
     # ------------------------------------------------------------------
     story.append(PageBreak())
-    add_heading(story, "8. Outlook", styles, lvl=1)
+    add_heading(story, "9. Outlook", styles, lvl=1)
     add_paragraph(
         story,
         (
@@ -733,7 +899,6 @@ def build_report():
         ),
         styles,
     )
-
     # ------------------------------------------------------------------
     # Build PDF
     # ------------------------------------------------------------------

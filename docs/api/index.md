@@ -15,3 +15,4 @@ Automatically generated from all `.py` modules in `scripts/`.
 - [step_6_goodness_of_fit](./scripts.step_6_goodness_of_fit.md)
 - [step_7_design_selection_and_map](./scripts.step_7_design_selection_and_map.md)
 - [step_8_generate_report](./scripts.step_8_generate_report.md)
+- [step_9_sensitivity_uncertainty_and_distributions](./scripts.step_9_sensitivity_uncertainty_and_distributions.md)

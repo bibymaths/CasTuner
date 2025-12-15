@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "CasTuner-Python-Port"
-version = "0.1.1"
+version = "0.1.2"
 description = "Python port of the CasTuner R code for modeling gene expression dynamics."
 readme = "README.md"
 requires-python = "==3.9.*"
@@ -32,6 +32,8 @@ dependencies = [
     "mkdocs-section-index>=0.3.10",
     "pymdown-extensions>=10.19",
     "ipykernel>=6.31.0",
+    "salib>=1.5.1",
+    "joblib>=1.5.2",
 ]
 
 [project.urls]

@@ -20,42 +20,42 @@ These half-times set the **timescale** for gene repression/derepression.
 ## Inputs
 
 - Gated FCS data for:
-  - **upregulation** time courses (dTAG withdrawal),
-  - **downregulation** time courses (dTAG addition),
+    - **upregulation** time courses (dTAG withdrawal),
+    - **downregulation** time courses (dTAG addition),
 - NFC samples for background subtraction (from `config.yaml`),
 - Experimental metadata (mapping file names to constructs/time points).
 
 ## Method
 
 1. **Gating and preprocessing**
-   - boundary gate (FSC/SSC),
-   - singlet gate (FSC-H/FSC-A),
-   - remove NFC background,
-   - compute **median tBFP** per (construct, experiment, time).
+    - boundary gate (FSC/SSC),
+    - singlet gate (FSC-H/FSC-A),
+    - remove NFC background,
+    - compute **median tBFP** per (construct, experiment, time).
 
 2. **Normalisation**
-   - for each construct, rescale BFP into \[0, 1]:
-     - 0 → lowest observed level (fully degraded),
-     - 1 → plateau level (steady state).
+    - for each construct, rescale BFP into \[0, 1]:
+        - 0 → lowest observed level (fully degraded),
+        - 1 → plateau level (steady state).
 
 3. **Exponential kinetic fits**
-   - For upregulation (`t₁/₂↑`):
-     - fit an exponential rise function:
-       \[
-       BFP(t) = 1 - \exp(-k_{\text{up}} t)
-       \]
-   - For downregulation (`t₁/₂↓`):
-       \[
-       BFP(t) = \exp(-k_{\text{down}} t)
-       \]
-   - Convert rate constants to half-times:
-       \[
-       t_{1/2} = \frac{\ln 2}{k}
-       \]
+    - For upregulation (`t₁/₂↑`):
+        - fit an exponential rise function:
+          \[
+          BFP(t) = 1 - \exp(-k_{\text{up}} t)
+          \]
+    - For downregulation (`t₁/₂↓`):
+      \[
+      BFP(t) = \exp(-k_{\text{down}} t)
+      \]
+    - Convert rate constants to half-times:
+      \[
+      t_{1/2} = \frac{\ln 2}{k}
+      \]
 
 4. **Quality checks**
-   - keep only constructs with enough time points and good fit quality,
-   - plot fits overlaid with data for visual inspection.
+    - keep only constructs with enough time points and good fit quality,
+    - plot fits overlaid with data for visual inspection.
 
 ## Outputs
 
@@ -75,7 +75,8 @@ Each row includes:
 - Small `t₁/₂↑` → repressor accumulates quickly after dTAG removal.
 - Small `t₁/₂↓` → repressor is removed quickly after dTAG re-addition.
 - Comparing constructs tells you:
-  - which design gives **fast control**,
-  - whether different systems (hHDAC4–dCas9, CasRx, KRAB) differ primarily at the degron level or in downstream chromatin/RNA processing.
+    - which design gives **fast control**,
+    - whether different systems (hHDAC4–dCas9, CasRx, KRAB) differ primarily at the degron level or in downstream
+      chromatin/RNA processing.
 
 These half-times are later used as fixed or initial parameters in the ODE model.

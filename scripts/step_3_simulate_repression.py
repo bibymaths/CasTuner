@@ -503,9 +503,12 @@ def simulate(beta: float, t_up: float, K: float, n: float, alpha: float,
     sol = solve_ivp(  # solve IVP
         ode_rhs, (t_start, t_end), y0,
         t_eval=t_eval,
-        # method="LSODA",
-        # max_step=0.5,
-        args=(beta, t_up, K, n, alpha)
+        method="LSODA",
+        # Why max_step=0.5? To prevent LSODA from taking too large steps
+        max_step=0.5,
+        args=(beta, t_up, K, n, alpha),
+        rtol=1e-7,
+        atol=1e-9
     )
     if not sol.success:  # propagate failure
         raise RuntimeError(sol.message)

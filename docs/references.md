@@ -7,7 +7,8 @@
    *Nature Communications* 14, 3225 (2023).  
    DOI: 10.1038/s41467-023-38909-4.
 
-   This paper introduces the CasTuner concept, compares degron and repressor designs, characterizes analog vs digital repression, and uses CasTuner to map dose–response relationships for NANOG and OCT4 in mouse ESCs.
+   This paper introduces the CasTuner concept, compares degron and repressor designs, characterizes analog vs digital
+   repression, and uses CasTuner to map dose–response relationships for NANOG and OCT4 in mouse ESCs.
 
 ## Additional topics
 
